@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<div class="jumbotron">
+  <h1 class="display-4">Welcome to Flask Showcase</h1>
+  <p class="lead">This application demonstrates key Flask features including:</p>
+  <ul>
+    <li>Routing and HTTP methods</li>
+    <li>PostgreSQL database integration (without ORM)</li>
+    <li>User authentication and session management</li>
+    <li>Template rendering with Jinja2</li>
+    <li>Form handling and validation</li>
+    <li>API endpoints returning JSON</li>
+    <li>Error handling</li>
+  </ul>
+  <hr class="my-4">
+  <p>Explore the application by navigating through the links above.</p>
+  {% if not g.user %}
+  <a class="btn btn-primary btn-lg" href="{{ url_for('main.register') }}" role="button">Get Started</a>
+  {% endif %}
+</div>
+
+<h2>Recent Posts</h2>
+{% if posts %}
+  <div class="row">
+    {% for post in posts %}
+      <div class="col-md-6 mb-3">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">{{ post.title }}</h5>
+            <p class="card-text">{{ post.content[:100] }}{% if post.content|length > 100 %}...{% endif %}</p>
+            <p class="card-text">
+              <small class="text-muted">By {{ post.username }} on {{ post.created_at.strftime('%Y-%m-%d') }}</small>
+            </p>
+            <a href="{{ url_for('main.post_detail', id=post.id) }}" class="btn btn-primary">Read More</a>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <p>No posts yet. <a href="{{ url_for('main.create_post') }}">Create the first post!</a></p>
+{% endif %}
+{% endblock %}
