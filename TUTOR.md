@@ -122,7 +122,7 @@ The `app/` directory contains all application code:
 
 ## Database Integration
 
-Our application supports both SQLite (for development) and PostgreSQL (for production).
+Our application uses PostgreSQL for both development and production.
 
 ### Database Connection
 The `get_db()` function in `app/db.py` creates database connections:
@@ -131,13 +131,8 @@ The `get_db()` function in `app/db.py` creates database connections:
 def get_db():
     if 'db' not in g:
         database_url = current_app.config['DATABASE_URL']
-        if database_url.startswith('postgresql://'):
-            # PostgreSQL connection
-            g.db = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
-        else:
-            # SQLite connection
-            g.db = sqlite3.connect(database_url, detect_types=sqlite3.PARSE_DECLTYPES)
-            g.db.row_factory = sqlite3.Row
+        # PostgreSQL connection
+        g.db = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
     return g.db
 ```
 
@@ -316,11 +311,7 @@ if __name__ == "__main__":
 
 4. Visit `http://localhost:8000` in your browser
 
-## Learning Exercises
-
-Try these exercises to reinforce your understanding:
-
-1. **Add a new route** - Create a new page in `routes.py`
+### 1. Add a new route - Create a new page in `routes.py`
 2. **Modify a template** - Change the design of an existing page
 3. **Add a new database table** - Extend the database schema
 4. **Create a new API endpoint** - Add a JSON endpoint
