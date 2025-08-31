@@ -193,13 +193,16 @@ Our base template (`templates/base.html`) defines the overall structure:
 <html>
   <head>
     <title>{% block title %}{% endblock %} - Flask Showcase</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   </head>
   <body>
-    <nav><!-- Navigation bar --></nav>
-    <div class="container">
-      <!-- Flash messages -->
-      {% block content %}{% endblock %}
-    </div>
+    <header><!-- Navigation bar --></header>
+    <main>
+      <div class="container">
+        <!-- Flash messages -->
+        {% block content %}{% endblock %}
+      </div>
+    </main>
   </body>
 </html>
 ```
@@ -229,6 +232,16 @@ return render_template('index.html', posts=posts)
   <p>{{ post.content }}</p>
 {% endfor %}
 ```
+
+### Styling
+Instead of using Bootstrap, we've implemented our own minimal CSS framework in `app/static/style.css`. This provides clean, readable styling with:
+- Responsive navigation
+- Card-based layouts for content
+- Simple form styling
+- Alert messages for user feedback
+- A consistent color scheme and typography
+
+This approach keeps the application lightweight while maintaining good usability and readability.
 
 ## API Endpoints
 

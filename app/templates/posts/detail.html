@@ -3,18 +3,13 @@
 {% block title %}{{ post.title }}{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-md-8">
-    <article>
-      <h1>{{ post.title }}</h1>
-      <p class="text-muted">By {{ post.username }} on {{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
-      <div class="mt-4">
-        {{ post.content }}
-      </div>
-    </article>
-    <div class="mt-4">
-      <a href="{{ url_for('main.posts') }}" class="btn btn-secondary">Back to Posts</a>
-    </div>
+<article class="card">
+  <h1>{{ post.title }}</h1>
+  <p class="text-muted">By {{ post.username }} on {{ post.created_at.strftime('%Y-%m-%d') }}</p>
+  <div>
+    {{ post.content }}
   </div>
-</div>
+</article>
+
+<a href="{{ url_for('main.posts') }}" class="btn">Back to Posts</a>
 {% endblock %}

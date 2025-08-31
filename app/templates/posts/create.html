@@ -7,15 +7,15 @@
   <div class="col-md-8">
     <h2>Create New Post</h2>
     <form method="post">
-      <div class="mb-3">
-        <label for="title" class="form-label">Title</label>
-        <input type="text" class="form-control" id="title" name="title" required>
+      <div class="form-group">
+        <label for="title">Title</label>
+        <input type="text" id="title" name="title" required>
       </div>
-      <div class="mb-3">
-        <label for="content" class="form-label">Content</label>
-        <textarea class="form-control" id="content" name="content" rows="5" required></textarea>
+      <div class="form-group">
+        <label for="content">Content</label>
+        <textarea id="content" name="content" required></textarea>
       </div>
-      <button type="submit" class="btn btn-primary">Create Post</button>
+      <button type="submit">Create Post</button>
       <a href="{{ url_for('main.posts') }}" class="btn btn-secondary">Cancel</a>
     </form>
   </div>
