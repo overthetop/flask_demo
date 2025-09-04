@@ -186,6 +186,24 @@ Notes:
 - When `SECRET_KEY` is omitted, a random one is generated at start. This is fine for local dev but will invalidate sessions between restarts.
 - Default `DATABASE_URL` matches the docker-compose service for convenience.
 
+## Request Context (flask.g)
+
+- Purpose: Per-request scratchpad for transient data shared across view functions, helpers, and templates.
+- Scope: Context-local; each request gets its own `g` and it is cleared on teardown.
+- Current user: `@main.before_app_request` sets `g.user` to a user row (or `None`) so views/templates can rely on it.
+- DB connection: `app/db.py#get_db()` stores a connection in `g.db` for reuse within the request; `close_db()` closes it in `app.teardown_appcontext`.
+- Templates: `base.html`, `index.html`, `posts/*`, and `auth/profile.html` read `g.user` to toggle UI and show user details.
+- Guidance: Store only request-scoped data; do not use `g` for cross-request state or persistence.
+
+### SECRET_KEY Usage
+
+- Purpose: Used by Flask to sign session cookies and flashed messages.
+- Where set: `app/config.py` (`SECRET_KEY` from env or random fallback).
+- Where loaded: `app/__init__.py` via `app.config.from_object(Config)`.
+- Where exercised: session access in `app/auth.py` and `app/routes.py`, and `flash()`/`get_flashed_messages()` in views/templates.
+- Caveat: No CSRF extension is configured; `SECRET_KEY` is not used for CSRF tokens here.
+- Stability: If the key changes between runs (e.g., using the random fallback), existing sessions and flashes become invalid after restart.
+
 ## Using Docker Compose
 
 - `docker compose up -d` starts a local PostgreSQL at port 5432
