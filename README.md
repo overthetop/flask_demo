@@ -54,22 +54,36 @@ requirements.txt                 # pinned deps
 ## Architecture
 
 ```mermaid
-graph TD
-  A[Client/Browser] -->|HTTP| J[Dev Server (app.py)]
-  A -->|HTTP| K[Waitress (wsgi.py)]
-  J --> B[Flask App]
+flowchart TD
+  %% Nodes
+  A[Client/Browser]
+  J[Dev Server app.py]
+  K[Waitress wsgi.py]
+  B[Flask App]
+  C[Blueprint main routes]
+  D[Auth helpers]
+  E[DB helper psycopg2 and init-db CLI]
+  F[Error handlers]
+  G[Templates Jinja2]
+  H[Static files]
+  I[(PostgreSQL)]
+
+  %% Edges
+  A --> J
+  A --> K
+  J --> B
   K --> B
 
-  subgraph Flask_App [Flask Application]
-    B --> C[Blueprint: main (routes)]
-    C --> D[Auth helpers]
-    C --> E[DB helper (psycopg2, init-db CLI)]
-    C --> F[Error handlers]
-    B --> G[Templates (Jinja2)]
-    B --> H[Static files]
+  subgraph Flask Application
+    B --> C
+    C --> D
+    C --> E
+    C --> F
+    B --> G
+    B --> H
   end
 
-  E --> I[(PostgreSQL)]
+  E --> I
 ```
 
 ## Features
@@ -128,12 +142,11 @@ sequenceDiagram
   R->>A: login_required check
   alt not authenticated
     R-->>B: 302 redirect to /login
-    deactivate F
   else authenticated
     F->>T: render create form
     T-->>B: 200 form
-    deactivate F
   end
+  deactivate F
 
   Note over B,F: Submit new post
   B->>F: POST /posts/create (title, content)
