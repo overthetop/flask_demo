@@ -6,9 +6,9 @@ open/close the connection gracefully.
 """
 
 import click
+import psycopg2
 from flask import current_app, g
 from flask.cli import with_appcontext
-import psycopg2
 from psycopg2.extras import RealDictCursor
 
 
