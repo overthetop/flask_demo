@@ -1,208 +1,230 @@
 # Flask Showcase Application
 
-This is an educational Flask application demonstrating popular features and best practices. It showcases how to build a production-ready Flask application with PostgreSQL (without ORM), user authentication, templates, RESTful APIs, and comprehensive logging.
+An educational Flask application demonstrating common patterns and best practices with a minimal dependency set: raw SQL via psycopg2, app factory + blueprints, simple auth, templates, JSON APIs, and production serving via Waitress.
 
-## Features
+## Quickstart
 
-- Flask routing and HTTP methods (GET, POST)
-- PostgreSQL database integration (without ORM)
-- Template rendering with Jinja2
-- User authentication (login/logout)
-- Session management
-- Form handling
-- Static file serving
-- Error handling
-- RESTful API endpoints
-- Health check endpoint
-- Comprehensive application logging
+1) Create and activate a venv
+- macOS/Linux: `python3 -m venv venv && source venv/bin/activate`
+- Windows (cmd): `python -m venv venv && venv\Scripts\activate`
+- Alternatively: `./activate.sh` (macOS/Linux)
+
+2) Install dependencies
+- `pip install -r requirements.txt`
+
+3) Start a local PostgreSQL (recommended)
+- `docker compose up -d`
+
+4) Configure environment (`.env` in project root)
+```
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/flask_showcase
+SECRET_KEY=dev-change-me
+FLASK_ENV=development
+```
+
+5) Initialize the database schema
+- `flask --app app:create_app init-db`
+
+6) Run the app
+- Dev server: `python app.py` → http://localhost:5000
+- Waitress: `python wsgi.py` → http://localhost:8000
+
+Optional (dev tools):
+- Install linters: `pip install -r requirements-dev.txt`
+- Lint: `ruff check .` (auto-fix: `ruff check . --fix`)
+
+## Project Structure
+
+```
+app/
+  __init__.py   # app factory, logging, blueprints, CLI
+  config.py     # env-driven configuration
+  db.py         # psycopg2 connection + CLI
+  auth.py       # hashing helpers + login_required
+  routes.py     # views + API endpoints
+  errors.py     # error handlers
+  templates/    # Jinja templates
+  static/       # CSS, images, JS
+app.py          # development entrypoint (Flask built-in server)
+wsgi.py         # production entrypoint (Waitress)
+docker-compose.yml, init-db.sql  # dev database
+requirements.txt                 # pinned deps
+```
 
 ## Architecture
 
 ```mermaid
 graph TD
-    A[Client/Browser] --> B[Flask Application]
-    B --> C[Routes Handler]
-    C --> D[Authentication Module]
-    C --> E[Database Module]
-    C --> F[Error Handlers]
-    E --> G[(PostgreSQL Database)]
-    B --> H[Templates Engine]
-    H --> I[HTML Templates]
-    B --> J[Static Files]
-    B --> K[Waitress Server]
-    
-    subgraph FlaskApp [Flask Application]
-        B
-        C
-        D
-        E
-        F
-        H
-        J
-    end
-    
-    subgraph External [External Components]
-        G
-        K
-    end
+  A[Client/Browser] -->|HTTP| J[Dev Server (app.py)]
+  A -->|HTTP| K[Waitress (wsgi.py)]
+  J --> B[Flask App]
+  K --> B
+
+  subgraph Flask_App [Flask Application]
+    B --> C[Blueprint: main (routes)]
+    C --> D[Auth helpers]
+    C --> E[DB helper (psycopg2, init-db CLI)]
+    C --> F[Error handlers]
+    B --> G[Templates (Jinja2)]
+    B --> H[Static files]
+  end
+
+  E --> I[(PostgreSQL)]
 ```
 
-## Project Structure
+## Features
 
+## Request Flow (Login)
+
+```mermaid
+sequenceDiagram
+  participant B as Browser
+  participant F as Flask App
+  participant R as Routes (Blueprint)
+  participant A as Auth Helpers
+  participant D as DB (psycopg2)
+  participant T as Templates
+
+  B->>F: POST /login (username, password)
+  activate F
+  F->>R: before_app_request
+  R->>D: Load g.user from session
+  D-->>R: user row or None
+  R-->>F: g.user set
+
+  F->>R: handle /login
+  R->>D: SELECT user WHERE username
+  D-->>R: user row
+  R->>A: verify_password(hash, password)
+  A-->>R: result (true/false)
+  alt valid credentials
+    R->>F: login_user -> session['user_id']
+    F->>T: render flash + redirect
+    T-->>B: 302 -> /
+  else invalid
+    R-->>B: 200 form with error message
+  end
+  deactivate F
 ```
-flask-showcase/
-├── app/
-│   ├── __init__.py          # Application factory
-│   ├── config.py            # Configuration settings
-│   ├── db.py                # Database connection and setup
-│   ├── auth.py              # Authentication utilities
-│   ├── routes.py            # Route definitions
-│   ├── errors.py            # Error handlers
-│   ├── templates/           # HTML templates
-│   └── static/              # CSS, JS, images
-├── requirements.txt         # Python dependencies
-├── wsgi.py                 # WSGI entry point for production
-├── .env                     # Environment variables (not in repo)
-├── .gitignore               # Git ignore rules
-└── app.py                   # Development entry point
+
+## Request Flow (Create Post)
+
+```mermaid
+sequenceDiagram
+  participant B as Browser
+  participant F as Flask App
+  participant R as Routes (Blueprint)
+  participant A as Auth Helpers
+  participant D as DB (psycopg2)
+  participant T as Templates
+
+  Note over B,F: Access form
+  B->>F: GET /posts/create
+  activate F
+  F->>R: before_app_request
+  R->>D: Load g.user from session
+  D-->>R: user row or None
+  R-->>F: g.user set
+  R->>A: login_required check
+  alt not authenticated
+    R-->>B: 302 redirect to /login
+    deactivate F
+  else authenticated
+    F->>T: render create form
+    T-->>B: 200 form
+    deactivate F
+  end
+
+  Note over B,F: Submit new post
+  B->>F: POST /posts/create (title, content)
+  activate F
+  F->>R: validate title
+  alt valid
+    R->>D: INSERT INTO posts (title, content, user_id)
+    D-->>R: commit ok
+    R-->>B: 302 redirect to /posts (flash message)
+  else invalid
+    R->>T: re-render form with error
+    T-->>B: 200 form with error
+  end
+  deactivate F
 ```
 
-## Setup
-
-1. Create a virtual environment:
-   ```bash
-   python -m venv venv
-   # On Windows:
-   venv\Scripts\activate
-   # On macOS/Linux:
-   source venv/bin/activate
-   ```
-
-2. Install dependencies:
-   ```bash
-   # On Windows, you might need to install psycopg2-binary separately first:
-   pip install psycopg2-binary
-   pip install -r requirements.txt
-   ```
-   
-   Note: If you encounter issues with `psycopg2-binary` on Windows, make sure you have the latest pip version:
-   ```bash
-   python -m pip install --upgrade pip
-   pip install psycopg2-binary
-   pip install -r requirements.txt
-   ```
-
-3. Set up PostgreSQL database:
-
-   Option A - Manual setup:
-   ```sql
-   CREATE DATABASE flask_showcase;
-   CREATE USER flask_user WITH PASSWORD 'flask_pass';
-   GRANT ALL PRIVILEGES ON DATABASE flask_showcase TO flask_user;
-   ```
-   
-   Then initialize the database tables using the provided SQL script:
-   ```bash
-   psql -U flask_user -d flask_showcase -f init-db.sql
-   ```
-
-   Option B - Using Docker Compose (recommended for development):
-   ```bash
-   # Start PostgreSQL in the background
-   # The database tables will be automatically created
-   docker compose up -d
-   
-   # Check that the database is running
-   docker compose ps
-   ```
-
-4. Create a `.env` file in the project root with:
-   ```env
-   DATABASE_URL=postgresql://flask_user:flask_pass@localhost/flask_showcase
-   SECRET_KEY=your-secret-key-here-change-in-production
-   FLASK_ENV=development
-   ```
-   
-   If using Docker Compose, use these credentials instead:
-   ```env
-   DATABASE_URL=postgresql://postgres:postgres@localhost:5432/flask_showcase
-   SECRET_KEY=your-secret-key-here-change-in-production
-   FLASK_ENV=development
-   ```
-
-5. Initialize the database (skip this step if using Docker Compose):
-   ```bash
-   python -c "from app import create_app; from app.db import init_db; app = create_app(); with app.app_context(): init_db(); print('Database initialized successfully!')"
-   ```
-
-6. Run the application in development mode:
-   ```bash
-   python app.py
-   ```
-
-7. Or run with Waitress for production:
-   ```bash
-   python wsgi.py
-   ```
-
-8. Visit `http://localhost:8000` in your browser (Waitress) or `http://localhost:5000` (development)
+- Routing with Blueprints and request hooks
+- PostgreSQL integration using raw SQL (psycopg2)
+- Jinja2 templates and static assets
+- Minimal auth: register/login/logout and session management
+- JSON endpoints for posts and a health check
+- Structured logging suited for dev/prod
 
 ## API Endpoints
 
-- `GET /api/posts` - Get all posts as JSON
-- `GET /api/posts/<id>` - Get a specific post as JSON
-- `GET /health` - Health check endpoint
+- `GET /api/posts` — List all posts
+- `GET /api/posts/<id>` — Get a single post
+- `GET /health` — Health check
 
-## Key Flask Concepts Demonstrated
+## Configuration
 
-1. **Application Factory Pattern** - Creates the Flask app instance
-2. **Blueprints** - Organize routes into separate modules
-3. **Request Hooks** - `before_app_request` for loading user data
-4. **Template Inheritance** - Base template with blocks for child templates
-5. **Flash Messages** - User feedback mechanism
-6. **Session Management** - User login state
-7. **Error Handlers** - Custom error pages
-8. **Database Integration** - Raw SQL with PostgreSQL
-9. **Environment Configuration** - Loading settings from `.env`
-10. **CLI Commands** - Custom `flask init-db` command
-11. **Logging** - Comprehensive application logging
+- `DATABASE_URL` — PostgreSQL connection string
+- `SECRET_KEY` — Set to a strong value in non-dev environments
+- `FLASK_ENV=development` — Enables debug features locally
 
-## Best Practices Implemented
-
-- Separation of concerns with modular structure
-- Environment-based configuration
-- Secure password hashing
-- Database connection management
-- Error handling and user feedback
-- Input validation
-- Protection against common web vulnerabilities
-- RESTful API design
-- Production-ready deployment with Waitress
-- Comprehensive logging for monitoring and debugging
+Notes:
+- When `SECRET_KEY` is omitted, a random one is generated at start. This is fine for local dev but will invalidate sessions between restarts.
+- Default `DATABASE_URL` matches the docker-compose service for convenience.
 
 ## Using Docker Compose
 
-This project includes Docker Compose configuration for easily setting up a PostgreSQL database for development.
+- `docker compose up -d` starts a local PostgreSQL at port 5432
+- The schema can be created via the Flask CLI (`init-db`) or by applying `init-db.sql` manually.
+- Stop and remove containers: `docker compose down`
+- Reset volumes: `docker compose down -v`
 
-- `docker-compose.yml` - Defines the PostgreSQL service and automatically initializes the database
-- `init-db.sql` - SQL script to create the required tables
+## Troubleshooting
 
-To use Docker Compose:
+- psycopg2 on Windows: ensure `pip` is up to date, then install `psycopg2-binary`.
+- Env not loading: ensure `.env` is at project root and readable; we use `python-dotenv`.
+- DB connection failures: verify `DATABASE_URL` and that PostgreSQL is running (`docker compose ps`).
 
-1. Start the database:
-   ```bash
-   docker compose up -d
-   ```
+## Security Notes
 
-2. The database tables will be automatically created when the container starts.
+- Never commit secrets; use `.env` or a secrets manager.
+- Use a strong `SECRET_KEY` in staging/production.
+- Prefer running behind a production WSGI server like Waitress or Gunicorn.
 
-3. When you're done, stop the database:
-   ```bash
-   docker compose down
-   ```
+## Linting
 
-If you want to reset the database, you can remove the volume and start fresh:
-```bash
-docker compose down -v
-docker compose up -d
-```
+- Ruff is configured via `pyproject.toml`.
+- Install dev tools: `pip install -r requirements-dev.txt`
+- Lint: `ruff check .` (auto-fix: `ruff check . --fix`)
+- Format: `ruff format` (or `--check` to verify only)
+
+## Blueprints
+
+- What: Blueprints are modular collections of routes, templates, and static files that can be registered on an app. They keep related views together and make large apps maintainable.
+- Where: This project defines a single blueprint `main` in `app/routes.py`.
+- Registration: The blueprint is registered in `app/__init__.py` inside `create_app()`.
+- Contents: `main` contains server-rendered pages (index, posts, auth forms) and JSON APIs (`/api/posts`, `/api/posts/<id>`), plus a `/health` endpoint.
+- Lifecycle hook: `@main.before_app_request` loads the current user into `g.user` so every view/template can rely on it being set or None.
+
+Adding routes:
+- Define a function and decorate it with `@main.route("/path")` in `app/routes.py`.
+- Protect a route by stacking `@login_required` above the view (imported from `app.auth`).
+- Return templates with `render_template(...)` or JSON/dicts for API responses.
+
+## Code Logic Overview
+
+- App factory: `app/__init__.py#create_app()` builds the Flask app, loads `Config`, configures logging, registers the `main` blueprint and error handlers, and wires the DB CLI/teardown.
+- Config: `app/config.py` loads `.env` and exposes defaults for `SECRET_KEY` and `DATABASE_URL`. In non-dev, set `SECRET_KEY` explicitly.
+- Database: `app/db.py` provides `get_db()` which opens one psycopg2 connection per request and stores it in `flask.g`. Rows use `RealDictCursor` so templates and JSON can access columns by name. A Click command `init-db` creates tables idempotently.
+- Auth: `app/auth.py` wraps Werkzeug’s hashing and provides `login_user`, `logout_user`, and `login_required`. The session only stores `user_id`, and the request hook populates `g.user`.
+- Routes: `app/routes.py` contains the `main` blueprint. Key endpoints:
+  - `/` — list recent posts
+  - `/register` — create user with hashed password
+  - `/login` and `/logout` — manage session
+  - `/profile` — requires login
+  - `/posts`, `/posts/create`, `/posts/<id>` — list/create/view posts
+  - `/api/posts`, `/api/posts/<id>` — JSON APIs
+  - `/health` — readiness probe
+- Errors: `app/errors.py` registers 404 and 500 handlers that log and render friendly pages.
+- Entrypoints: `app.py` runs the dev server; `wsgi.py` serves via Waitress for production-like environments.

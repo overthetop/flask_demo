@@ -1,12 +1,24 @@
+"""Database helpers and CLI integration.
+
+This module manages a single psycopg2 connection per request context via
+`flask.g`, exposes a simple `init-db` Click command, and provides helpers to
+open/close the connection gracefully.
+"""
+
+import click
+from flask import current_app, g
+from flask.cli import with_appcontext
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from flask import current_app, g
-import click
-from flask.cli import with_appcontext
 
 
 def get_db():
-    """Get database connection from Flask context or create a new one."""
+    """Get a request-scoped database connection.
+
+    Returns the same connection for the lifetime of the request, creating it
+    on first access. Rows are returned as dict-like objects via
+    `RealDictCursor` for readability in templates and JSON responses.
+    """
     if "db" not in g:
         database_url = current_app.config["DATABASE_URL"]
         current_app.logger.debug(f"Connecting to database: {database_url}")
@@ -15,7 +27,7 @@ def get_db():
 
 
 def close_db(e=None):
-    """Close database connection."""
+    """Close the connection stored in `g`, if any."""
     db = g.pop("db", None)
     if db is not None:
         current_app.logger.debug("Closing database connection")
@@ -23,7 +35,10 @@ def close_db(e=None):
 
 
 def init_db():
-    """Initialize database with required tables."""
+    """Create required tables if they do not exist.
+
+    This function is idempotent and safe to run multiple times.
+    """
     db = get_db()
     current_app.logger.info("Initializing database")
 
@@ -62,7 +77,7 @@ def init_db():
 
 
 def init_app(app):
-    """Register database functions with Flask app."""
+    """Register teardown and CLI commands on the Flask app."""
     app.teardown_appcontext(close_db)
     app.cli.add_command(init_db_command)
 
@@ -70,6 +85,6 @@ def init_app(app):
 @click.command("init-db")
 @with_appcontext
 def init_db_command():
-    """Clear existing data and create new tables."""
+    """CLI: create required tables for the application."""
     init_db()
     click.echo("Initialized the database.")

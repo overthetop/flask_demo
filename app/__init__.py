@@ -1,15 +1,31 @@
+"""Flask application factory and bootstrap.
+
+This module exposes a single `create_app` function that configures the Flask
+application, registers blueprints and error handlers, and wires up the
+database integration. The factory pattern keeps the code testable and
+environment‑agnostic.
+"""
+
 import logging
+
 from flask import Flask
+
 from app.config import Config
 
 
 def create_app():
+    """Create and configure an instance of the Flask application.
+
+    - Loads configuration from environment via `Config`.
+    - Sets up concise, production‑friendly logging when not in debug mode.
+    - Registers routes, error handlers and database helpers.
+    """
     app = Flask(__name__)
     app.config.from_object(Config)
 
     # Configure logging
     if not app.debug:
-        # Remove default handlers to avoid duplicate logs
+        # Remove default handlers to avoid duplicate logs from Flask/werkzeug
         app.logger.handlers.clear()
 
         # Create a formatter
@@ -21,13 +37,14 @@ def create_app():
         # Create a handler for stdout
         handler = logging.StreamHandler()
         handler.setFormatter(formatter)
-        handler.setLevel(logging.INFO)  # Set to desired level (INFO, WARNING, ERROR)
+        # Stream to stdout; INFO is a sensible default for production
+        handler.setLevel(logging.INFO)
 
         # Add handler to app logger
         app.logger.addHandler(handler)
-        app.logger.setLevel(logging.INFO)  # Set to desired level
+        app.logger.setLevel(logging.INFO)
 
-        # Prevent Flask from adding its own handlers
+        # Prevent Flask from adding its own handlers and double‑logging
         app.logger.propagate = False
 
     # Register blueprints

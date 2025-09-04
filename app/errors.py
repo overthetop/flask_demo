@@ -1,8 +1,14 @@
-from flask import render_template, current_app
+"""Custom error handlers.
+
+Provides simple, user-friendly pages for common HTTP errors while logging at
+appropriate levels for observability.
+"""
+
+from flask import current_app, render_template
 
 
 def register_error_handlers(app):
-    """Register error handlers with the Flask app."""
+    """Attach error handlers for 404 and 500 to the app instance."""
 
     @app.errorhandler(404)
     def not_found_error(error):

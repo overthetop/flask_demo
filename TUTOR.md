@@ -66,20 +66,38 @@ def create_app():
 ```
 
 ### 2. Blueprints
-Blueprints help organize routes into separate modules. Our main blueprint is defined in `app/routes.py`:
+Blueprints organize related routes and logic into reusable modules. This project uses a single blueprint called `main` in `app/routes.py`:
 
 ```python
 # app/routes.py
-main = Blueprint('main', __name__)
+from flask import Blueprint
+main = Blueprint("main", __name__)
+
+@main.route("/")
+def index():
+    return render_template("index.html")
 ```
+
+The blueprint is registered in the app factory (`app/__init__.py#create_app()`), keeping the app modular and testable.
+
+Project-specific: error handlers are not defined on the blueprint; instead, `app/errors.py` exposes `register_error_handlers(app)` which attaches `@app.errorhandler(404)` and `@app.errorhandler(500)` handlers within the factory.
 
 ### 3. Request Hooks
 Request hooks run code before or after requests:
 ```python
 @main.before_app_request
 def load_logged_in_user():
-    # This runs before every request
-    pass
+    # Runs before every request across the app
+    user_id = session.get("user_id")
+    if user_id is None:
+        g.user = None
+    else:
+        # Fetch the user row and store it in g.user
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+        g.user = cursor.fetchone()
+        cursor.close()
 ```
 
 ### 4. Template Inheritance
@@ -106,13 +124,14 @@ Let's examine each file and directory:
 2. **wsgi.py** - Production entry point (for Waitress)
 3. **requirements.txt** - Python dependencies
 4. **.gitignore** - Files to ignore in version control
-5. **.flake8** - Code style configuration
-6. **README.md** - Project documentation
+5. **pyproject.toml** - Tooling config (Ruff, Pyright)
+6. **requirements-dev.txt** - Dev-only tools (e.g., Ruff linter)
+7. **README.md** - Project documentation
 
 ### App Directory
 The `app/` directory contains all application code:
 
-1. **`__init__.py`** - Application factory
+1. **`__init__.py`** - Application factory (registers blueprint, errors, DB CLI)
 2. **auth.py** - Authentication utilities
 3. **config.py** - Configuration settings
 4. **db.py** - Database connection and setup
@@ -125,13 +144,12 @@ The `app/` directory contains all application code:
 Our application uses PostgreSQL for both development and production.
 
 ### Database Connection
-The `get_db()` function in `app/db.py` creates database connections:
+The `get_db()` function in `app/db.py` returns a request-scoped connection and stores it on `flask.g` so each request reuses one connection:
 
 ```python
 def get_db():
-    if 'db' not in g:
-        database_url = current_app.config['DATABASE_URL']
-        # PostgreSQL connection
+    if "db" not in g:
+        database_url = current_app.config["DATABASE_URL"]
         g.db = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
     return g.db
 ```
@@ -160,7 +178,7 @@ def verify_password(stored_password, provided_password):
 ```
 
 ### Session Management
-We store user IDs in Flask sessions:
+We store user IDs in Flask sessions and populate `g.user` via the request hook:
 ```python
 def login_user(user_id):
     session.clear()
@@ -171,7 +189,7 @@ def logout_user():
 ```
 
 ### Login Required Decorator
-We created a decorator to protect routes:
+We created a decorator to protect routes. Use it by stacking `@login_required` above a view within the `main` blueprint:
 ```python
 def login_required(view):
     @functools.wraps(view)
@@ -286,8 +304,11 @@ if __name__ == "__main__":
 ### Development Mode
 1. Create a virtual environment:
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   python3 -m venv venv
+   # macOS/Linux
+   source venv/bin/activate
+   # Windows (cmd)
+   # python -m venv venv && venv\Scripts\activate
    ```
 
 2. Install dependencies:
@@ -304,7 +325,7 @@ if __name__ == "__main__":
 
 4. Initialize the database:
    ```bash
-   python -m flask init-db
+   flask --app app:create_app init-db
    ```
 
 5. Run the development server:
@@ -324,17 +345,18 @@ if __name__ == "__main__":
 
 4. Visit `http://localhost:8000` in your browser
 
-### 1. Add a new route - Create a new page in `routes.py`
-2. **Modify a template** - Change the design of an existing page
-3. **Add a new database table** - Extend the database schema
-4. **Create a new API endpoint** - Add a JSON endpoint
-5. **Implement form validation** - Add validation to existing forms
+### Learning Exercises
+1. Add a new route — Create a page in `app/routes.py` using `@main.route`.
+2. Modify a template — Change `templates/index.html` or create `templates/posts/...`.
+3. Add a new database table — Extend schema in `init_db()` or a migration.
+4. Create a new API endpoint — Return dicts/JSON in a new route.
+5. Implement form validation — Add checks in POST handlers; flash errors.
 
 ## Common Flask Patterns
 
-### 1. Handling Forms
+### 1. Handling Forms (Blueprint style)
 ```python
-@app.route('/register', methods=['GET', 'POST'])
+@main.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
         # Process form data
@@ -342,12 +364,12 @@ def register():
         # ... validation and processing
     else:
         # Show form
-        return render_template('register.html')
+        return render_template('auth/register.html')
 ```
 
 ### 2. Error Handling
 ```python
-@app.errorhandler(404)
+@main.app_errorhandler(404)
 def not_found_error(error):
     return render_template('errors/404.html'), 404
 ```
@@ -378,3 +400,51 @@ To continue learning Flask:
 5. **Study Security Best Practices** - CSRF protection, XSS prevention
 
 This tutorial covered the fundamentals of the Flask Showcase application. As you work with the code, refer back to these concepts to deepen your understanding of Flask and web development.
+
+## Code References
+
+Core factory and configuration:
+- create_app: app/__init__.py#L14-L63
+- Config: app/config.py
+
+Blueprint and request hooks:
+- Blueprint `main`: app/routes.py#L31-L31
+- before_app_request load user: app/routes.py#L34-L53
+
+Key routes (server-rendered):
+- index: app/routes.py#L56-L73
+- register: app/routes.py#L76-L120
+- login: app/routes.py#L125-L153
+- logout: app/routes.py#L156-L162
+- profile: app/routes.py#L165-L170
+- list posts: app/routes.py#L173-L190
+- create post: app/routes.py#L193-L222
+- post detail: app/routes.py#L225-L249
+
+API endpoints:
+- GET /api/posts: app/routes.py#L252-L272
+- GET /api/posts/<id>: app/routes.py#L275-L298
+- GET /health: app/routes.py#L301-L305
+
+Database helpers and CLI:
+- get_db: app/db.py#L15-L26
+- init_db (tables): app/db.py#L37-L76
+- init-db CLI: app/db.py#L85-L90
+
+Authentication helpers:
+- hash_password: app/auth.py#L14-L17
+- verify_password: app/auth.py#L20-L24
+- login_user: app/auth.py#L27-L31
+- logout_user: app/auth.py#L34-L38
+- login_required: app/auth.py#L41-L56
+
+Error handlers:
+- register_error_handlers: app/errors.py#L10-L21
+
+## Linting
+
+- Linter: Ruff is configured via `pyproject.toml`.
+- Install (venv): `pip install -r requirements-dev.txt`
+- Run checks: `ruff check .`
+- Auto-fix: `ruff check . --fix`
+- Format: `ruff format` (check mode: `ruff format --check`)

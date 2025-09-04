@@ -1,0 +1,31 @@
+[tool.pyright]
+venvPath = "."
+venv = "venv"
+
+[tool.ruff]
+# Keep consistent with Black defaults and project Python version
+line-length = 88
+target-version = "py312"
+exclude = [
+  ".git",
+  "venv",
+  "__pycache__",
+  "*.egg-info",
+  ".mypy_cache",
+  ".pytest_cache",
+  "build",
+  "dist",
+  "node_modules",
+]
+
+[tool.ruff.lint]
+# Core rules: pycodestyle (E), pyflakes (F), isort (I), bugbear (B),
+# modernize code (pyupgrade, UP), smarter comprehensions (C4)
+select = ["E", "F", "I", "B", "UP", "C4"]
+# Allow unused imports in package __init__ files
+per-file-ignores = { "**/__init__.py" = ["F401"] }
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+combine-as-imports = true
+force-sort-within-sections = true

@@ -1,0 +1,9 @@
+[
+  {
+    "label": "Run project",
+    "command": "./venv/bin/activate && .venv/bin/python",
+    "args": ["app.py"],
+    "use_new_terminal": false,
+    "shell": "system"
+  }
+]

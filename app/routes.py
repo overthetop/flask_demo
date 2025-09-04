@@ -1,29 +1,44 @@
+"""Application routes and views.
+
+Routes are grouped under the `main` blueprint and demonstrate:
+- Server-rendered pages (index, posts, auth forms)
+- Simple REST endpoints for posts
+- Request lifecycle hooks to load the current user
+
+All SQL is written explicitly using `psycopg2` to keep dependencies light.
+"""
+
 from flask import (
     Blueprint,
+    current_app,
+    flash,
+    g,
+    redirect,
     render_template,
     request,
-    redirect,
-    url_for,
-    flash,
     session,
-    g,
-    current_app,
+    url_for,
 )
-from app.db import get_db
+
 from app.auth import (
     hash_password,
-    verify_password,
+    login_required,
     login_user,
     logout_user,
-    login_required,
+    verify_password,
 )
+from app.db import get_db
 
 main = Blueprint("main", __name__)
 
 
 @main.before_app_request
 def load_logged_in_user():
-    """Load logged in user data before each request."""
+    """Load the current user into `g.user` for each request.
+
+    This runs before every request so templates and views can rely on
+    `g.user` being either a user row (RealDictRow) or `None`.
+    """
     user_id = session.get("user_id")
     if user_id is None:
         g.user = None
@@ -41,7 +56,7 @@ def load_logged_in_user():
 
 @main.route("/")
 def index():
-    """Home page showing recent posts."""
+    """Render the home page with the most recent posts."""
     current_app.logger.info("Accessing home page")
     db = get_db()
     cursor = db.cursor()
@@ -61,7 +76,11 @@ def index():
 
 @main.route("/register", methods=("GET", "POST"))
 def register():
-    """User registration page."""
+    """Register a new user.
+
+    On POST, performs minimal validation and creates the user with a hashed
+    password. On success, redirects to the login page.
+    """
     if request.method == "POST":
         username = request.form["username"]
         email = request.form["email"]
@@ -106,7 +125,7 @@ def register():
 
 @main.route("/login", methods=("GET", "POST"))
 def login():
-    """User login page."""
+    """Authenticate a user and start a session."""
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
@@ -154,7 +173,7 @@ def profile():
 
 @main.route("/posts")
 def posts():
-    """Display all posts."""
+    """List all posts (server-rendered)."""
     current_app.logger.info("Accessing posts page")
     db = get_db()
     cursor = db.cursor()
@@ -206,7 +225,7 @@ def create_post():
 
 @main.route("/posts/<int:id>")
 def post_detail(id):
-    """Display a single post."""
+    """Display a single post by id."""
     current_app.logger.debug(f"Accessing post detail for post {id}")
     db = get_db()
     cursor = db.cursor()
@@ -233,7 +252,7 @@ def post_detail(id):
 
 @main.route("/api/posts")
 def api_posts():
-    """API endpoint to get all posts as JSON."""
+    """Return all posts as JSON for API consumers."""
     current_app.logger.info("Accessing API posts endpoint")
     db = get_db()
     cursor = db.cursor()
@@ -256,7 +275,7 @@ def api_posts():
 
 @main.route("/api/posts/<int:id>")
 def api_post_detail(id):
-    """API endpoint to get a single post as JSON."""
+    """Return a single post as JSON or 404 if missing."""
     current_app.logger.debug(f"Accessing API post detail for post {id}")
     db = get_db()
     cursor = db.cursor()
@@ -282,6 +301,6 @@ def api_post_detail(id):
 
 @main.route("/health")
 def health_check():
-    """Health check endpoint."""
+    """Lightweight health check for readiness probes."""
     current_app.logger.debug("Health check accessed")
     return {"status": "healthy"}, 200
