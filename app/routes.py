@@ -5,7 +5,7 @@ Routes are grouped under the `main` blueprint and demonstrate:
 - Simple REST endpoints for posts
 - Request lifecycle hooks to load the current user
 
-All SQL is written explicitly using `psycopg2` to keep dependencies light.
+All SQL is written explicitly using `psycopg` to keep dependencies light.
 """
 
 from flask import (
@@ -37,20 +37,19 @@ def load_logged_in_user():
     """Load the current user into `g.user` for each request.
 
     This runs before every request so templates and views can rely on
-    `g.user` being either a user row (RealDictRow) or `None`.
+    `g.user` being either a user row (dict-like) or `None`.
     """
     user_id = session.get("user_id")
     if user_id is None:
         g.user = None
     else:
         db = get_db()
-        cursor = db.cursor()
-        cursor.execute(
-            "SELECT * FROM users WHERE id = %s",
-            (user_id,),
-        )
-        g.user = cursor.fetchone()
-        cursor.close()
+        with db.cursor() as cursor:
+            cursor.execute(
+                "SELECT * FROM users WHERE id = %s",
+                (user_id,),
+            )
+            g.user = cursor.fetchone()
         current_app.logger.debug(f"Loaded user {user_id}")
 
 
@@ -59,17 +58,16 @@ def index():
     """Render the home page with the most recent posts."""
     current_app.logger.info("Accessing home page")
     db = get_db()
-    cursor = db.cursor()
-    cursor.execute(
-        """
+    with db.cursor() as cursor:
+        cursor.execute(
+            """
         SELECT p.id, p.title, p.content, p.created_at, u.username
         FROM posts p
         JOIN users u ON p.user_id = u.id
         ORDER BY p.created_at DESC
         """
-    )
-    posts = cursor.fetchall()
-    cursor.close()
+        )
+        posts = cursor.fetchall()
     current_app.logger.debug(f"Fetched {len(posts)} posts for home page")
     return render_template("index.html", posts=posts)
 
@@ -85,40 +83,40 @@ def register():
         username = request.form["username"]
         email = request.form["email"]
         password = request.form["password"]
-        db = get_db()
-        cursor = db.cursor()
-        error = None
 
+        error = None
         if not username:
             error = "Username is required."
         elif not email:
             error = "Email is required."
         elif not password:
             error = "Password is required."
-        else:
-            cursor.execute(
-                "SELECT id FROM users WHERE username = %s OR email = %s",
-                (username, email),
-            )
-            if cursor.fetchone() is not None:
-                error = "User with this username or email already exists."
 
-        if error is None:
-            current_app.logger.info(f"Registering new user: {username}")
-            cursor.execute(
-                "INSERT INTO users (username, email, password_hash) "
-                "VALUES (%s, %s, %s)",
-                (username, email, hash_password(password)),
-            )
-            db.commit()
-            cursor.close()
-            flash("Registration successful! Please log in.")
-            current_app.logger.info(f"User {username} registered successfully")
-            return redirect(url_for("main.login"))
+        db = get_db()
+        with db.cursor() as cursor:
+            if error is None:
+                cursor.execute(
+                    "SELECT id FROM users WHERE username = %s OR email = %s",
+                    (username, email),
+                )
+                if cursor.fetchone() is not None:
+                    error = "User with this username or email already exists."
 
-        flash(error)
-        current_app.logger.warning(f"Registration failed: {error}")
-        cursor.close()
+            if error is None:
+                current_app.logger.info(f"Registering new user: {username}")
+                cursor.execute(
+                    "INSERT INTO users (username, email, password_hash) "
+                    "VALUES (%s, %s, %s)",
+                    (username, email, hash_password(password)),
+                )
+                db.commit()
+                flash("Registration successful! Please log in.")
+                current_app.logger.info(f"User {username} registered successfully")
+                return redirect(url_for("main.login"))
+
+        if error is not None:
+            flash(error)
+            current_app.logger.warning(f"Registration failed: {error}")
 
     return render_template("auth/register.html")
 
@@ -130,26 +128,23 @@ def login():
         username = request.form["username"]
         password = request.form["password"]
         db = get_db()
-        cursor = db.cursor()
-        error = None
+        with db.cursor() as cursor:
+            error = None
 
-        cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
-        user = cursor.fetchone()
+            cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+            user = cursor.fetchone()
 
-        if user is None:
-            error = "Incorrect username or password."
-        elif not verify_password(user["password_hash"], password):
-            error = "Incorrect username or password."
+            if user is None or not verify_password(user["password_hash"], password):
+                error = "Incorrect username or password."
 
-        if error is None:
-            login_user(user["id"])
-            flash("Logged in successfully!")
-            current_app.logger.info(f"User {username} logged in successfully")
-            return redirect(url_for("main.index"))
+            if error is None:
+                login_user(user["id"])
+                flash("Logged in successfully!")
+                current_app.logger.info(f"User {username} logged in successfully")
+                return redirect(url_for("main.index"))
 
-        flash(error)
-        current_app.logger.warning(f"Login failed for {username}: {error}")
-        cursor.close()
+            flash(error)
+            current_app.logger.warning(f"Login failed for {username}: {error}")
 
     return render_template("auth/login.html")
 
@@ -176,17 +171,16 @@ def posts():
     """List all posts (server-rendered)."""
     current_app.logger.info("Accessing posts page")
     db = get_db()
-    cursor = db.cursor()
-    cursor.execute(
-        """
+    with db.cursor() as cursor:
+        cursor.execute(
+            """
         SELECT p.id, p.title, p.content, p.created_at, u.username
         FROM posts p
         JOIN users u ON p.user_id = u.id
         ORDER BY p.created_at DESC
         """
-    )
-    posts = cursor.fetchall()
-    cursor.close()
+        )
+        posts = cursor.fetchall()
     current_app.logger.debug(f"Fetched {len(posts)} posts")
     return render_template("posts/index.html", posts=posts)
 
@@ -209,13 +203,12 @@ def create_post():
         else:
             current_app.logger.info(f"Creating new post: {title}")
             db = get_db()
-            cursor = db.cursor()
-            cursor.execute(
-                "INSERT INTO posts (title, content, user_id) VALUES (%s, %s, %s)",
-                (title, content, g.user["id"]),
-            )
-            db.commit()
-            cursor.close()
+            with db.cursor() as cursor:
+                cursor.execute(
+                    "INSERT INTO posts (title, content, user_id) VALUES (%s, %s, %s)",
+                    (title, content, g.user["id"]),
+                )
+                db.commit()
             flash("Post created successfully!")
             current_app.logger.info(f"Post '{title}' created successfully")
             return redirect(url_for("main.posts"))
@@ -228,18 +221,17 @@ def post_detail(id):
     """Display a single post by id."""
     current_app.logger.debug(f"Accessing post detail for post {id}")
     db = get_db()
-    cursor = db.cursor()
-    cursor.execute(
-        """
+    with db.cursor() as cursor:
+        cursor.execute(
+            """
         SELECT p.id, p.title, p.content, p.created_at, u.username
         FROM posts p
         JOIN users u ON p.user_id = u.id
         WHERE p.id = %s
         """,
-        (id,),
-    )
-    post = cursor.fetchone()
-    cursor.close()
+            (id,),
+        )
+        post = cursor.fetchone()
 
     if post is None:
         current_app.logger.warning(f"Post {id} not found")
@@ -255,17 +247,16 @@ def api_posts():
     """Return all posts as JSON for API consumers."""
     current_app.logger.info("Accessing API posts endpoint")
     db = get_db()
-    cursor = db.cursor()
-    cursor.execute(
-        """
+    with db.cursor() as cursor:
+        cursor.execute(
+            """
         SELECT p.id, p.title, p.content, p.created_at, u.username
         FROM posts p
         JOIN users u ON p.user_id = u.id
         ORDER BY p.created_at DESC
         """
-    )
-    posts = cursor.fetchall()
-    cursor.close()
+        )
+        posts = cursor.fetchall()
 
     # Convert to list of dictionaries
     posts_list = [dict(post) for post in posts]
@@ -278,18 +269,17 @@ def api_post_detail(id):
     """Return a single post as JSON or 404 if missing."""
     current_app.logger.debug(f"Accessing API post detail for post {id}")
     db = get_db()
-    cursor = db.cursor()
-    cursor.execute(
-        """
+    with db.cursor() as cursor:
+        cursor.execute(
+            """
         SELECT p.id, p.title, p.content, p.created_at, u.username
         FROM posts p
         JOIN users u ON p.user_id = u.id
         WHERE p.id = %s
         """,
-        (id,),
-    )
-    post = cursor.fetchone()
-    cursor.close()
+            (id,),
+        )
+        post = cursor.fetchone()
 
     if post is None:
         current_app.logger.warning(f"Post {id} not found via API")

@@ -2,5 +2,4 @@
 
 # Ruff: ultra-fast Python linter/formatter
 # Pin for team/CI consistency; update periodically as needed
-ruff==0.6.8
-
+ruff==0.12.12

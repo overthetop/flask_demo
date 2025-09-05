@@ -13,7 +13,8 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 def hash_password(password):
     """Hash a plaintext password using a secure algorithm."""
-    current_app.logger.info("Hashing password for user")
+    # Avoid noisy info logs; this is a routine operation.
+    current_app.logger.debug("Hashing password")
     return generate_password_hash(password)
 
 

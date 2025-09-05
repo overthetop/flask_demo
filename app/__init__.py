@@ -23,8 +23,8 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    # Configure logging
-    if not app.debug:
+    # Configure logging (keep concise in dev; structured in prod)
+    if not app.debug and not app.testing:
         # Remove default handlers to avoid duplicate logs from Flask/werkzeug
         app.logger.handlers.clear()
 

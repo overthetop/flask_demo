@@ -1,14 +1,14 @@
 """Database helpers.
 
-This module manages a single psycopg2 connection per request context via
+This module manages a single psycopg connection per request context via
 `flask.g` and provides helpers to open/close the connection gracefully.
 Schema initialization is intentionally not handled here; run `init-db.sql`
 manually against the database to create tables.
 """
 
-import psycopg2
+import psycopg
 from flask import current_app, g
-from psycopg2.extras import RealDictCursor
+from psycopg.rows import dict_row
 
 
 def get_db():
@@ -16,12 +16,13 @@ def get_db():
 
     Returns the same connection for the lifetime of the request, creating it
     on first access. Rows are returned as dict-like objects via
-    `RealDictCursor` for readability in templates and JSON responses.
+    psycopg's `dict_row` row factory for readability in templates and JSON
+    responses.
     """
     if "db" not in g:
         database_url = current_app.config["DATABASE_URL"]
         current_app.logger.debug(f"Connecting to database: {database_url}")
-        g.db = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
+        g.db = psycopg.connect(database_url, row_factory=dict_row)
     return g.db
 
 

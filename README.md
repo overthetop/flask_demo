@@ -1,6 +1,6 @@
 # Flask Showcase Application
 
-An educational Flask application demonstrating common patterns and best practices with a minimal dependency set: raw SQL via psycopg2, app factory + blueprints, simple auth, templates, JSON APIs, and production serving via Waitress.
+An educational Flask application demonstrating common patterns and best practices with a minimal dependency set: raw SQL via psycopg, app factory + blueprints, simple auth, templates, JSON APIs, and production serving via Waitress.
 
 ## Quickstart
 
@@ -19,7 +19,8 @@ An educational Flask application demonstrating common patterns and best practice
 ```
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/flask_showcase
 SECRET_KEY=dev-change-me
-FLASK_ENV=development
+# Flask 3: use FLASK_DEBUG for dev
+FLASK_DEBUG=1
 ```
 
 5) Initialize the database schema
@@ -43,7 +44,7 @@ Optional (dev tools):
 app/
   __init__.py   # app factory, logging, blueprints
   config.py     # env-driven configuration
-  db.py         # psycopg2 connection helpers
+  db.py         # psycopg connection helpers
   auth.py       # hashing helpers + login_required
   routes.py     # views + API endpoints
   errors.py     # error handlers
@@ -66,7 +67,7 @@ flowchart TD
   B[Flask App]
   C[Blueprint main routes]
   D[Auth helpers]
-  E["DB helper (psycopg2)"]
+  E["DB helper (psycopg)"]
   F[Error handlers]
   G[Templates Jinja2]
   H[Static files]
@@ -100,7 +101,7 @@ sequenceDiagram
   participant F as Flask App
   participant R as Routes (Blueprint)
   participant A as Auth Helpers
-  participant D as DB (psycopg2)
+  participant D as DB (psycopg)
   participant T as Templates
 
   B->>F: POST /login (username, password)
@@ -133,7 +134,7 @@ sequenceDiagram
   participant F as Flask App
   participant R as Routes (Blueprint)
   participant A as Auth Helpers
-  participant D as DB (psycopg2)
+  participant D as DB (psycopg)
   participant T as Templates
 
   Note over B,F: Access form
@@ -168,7 +169,7 @@ sequenceDiagram
 ```
 
 - Routing with Blueprints and request hooks
-- PostgreSQL integration using raw SQL (psycopg2)
+- PostgreSQL integration using raw SQL (psycopg)
 - Jinja2 templates and static assets
 - Minimal auth: register/login/logout and session management
 - JSON endpoints for posts and a health check
@@ -184,7 +185,7 @@ sequenceDiagram
 
 - `DATABASE_URL` — PostgreSQL connection string
 - `SECRET_KEY` — Set to a strong value in non-dev environments
-- `FLASK_ENV=development` — Enables debug features locally
+- `FLASK_DEBUG=1` — Enables debug features locally
 
 Notes:
 - When `SECRET_KEY` is omitted, a random one is generated at start. This is fine for local dev but will invalidate sessions between restarts.
@@ -218,7 +219,7 @@ Notes:
 
 ## Troubleshooting
 
-- psycopg2 on Windows: ensure `pip` is up to date, then install `psycopg2-binary`.
+- psycopg on Windows: ensure `pip` is up to date. If you encounter build issues, use prebuilt wheels by installing normally with `pip install psycopg`.
 - Env not loading: ensure `.env` is at project root and readable; we use `python-dotenv`.
 - DB connection failures: verify `DATABASE_URL` and that PostgreSQL is running (`docker compose ps`).
 
@@ -269,7 +270,7 @@ Adding routes:
 
 - App factory: `app/__init__.py#create_app()` builds the Flask app, loads `Config`, configures logging, registers the `main` blueprint and error handlers, and wires the DB teardown.
 - Config: `app/config.py` loads `.env` and exposes defaults for `SECRET_KEY` and `DATABASE_URL`. In non-dev, set `SECRET_KEY` explicitly.
-- Database: `app/db.py` provides `get_db()` which opens one psycopg2 connection per request and stores it in `flask.g`. Rows use `RealDictCursor` so templates and JSON can access columns by name. Schema initialization is not handled in code; run `init-db.sql` manually.
+- Database: `app/db.py` provides `get_db()` which opens one psycopg connection per request and stores it in `flask.g`. Rows use the `dict_row` row factory so templates and JSON can access columns by name. Schema initialization is not handled in code; run `init-db.sql` manually.
 - Auth: `app/auth.py` wraps Werkzeug’s hashing and provides `login_user`, `logout_user`, and `login_required`. The session only stores `user_id`, and the request hook populates `g.user`.
 - Routes: `app/routes.py` contains the `main` blueprint. Key endpoints:
   - `/` — list recent posts

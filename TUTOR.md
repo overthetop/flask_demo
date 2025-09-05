@@ -147,10 +147,13 @@ Our application uses PostgreSQL for both development and production.
 The `get_db()` function in `app/db.py` returns a request-scoped connection and stores it on `flask.g` so each request reuses one connection:
 
 ```python
+from psycopg import connect
+from psycopg.rows import dict_row
+
 def get_db():
     if "db" not in g:
         database_url = current_app.config["DATABASE_URL"]
-        g.db = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
+        g.db = connect(database_url, row_factory=dict_row)
     return g.db
 ```
 
@@ -320,7 +323,8 @@ if __name__ == "__main__":
    ```env
    DATABASE_URL=postgresql://postgres:postgres@localhost:5432/flask_showcase
    SECRET_KEY=your-secret-key-here
-   FLASK_ENV=development
+   # Flask 3: use FLASK_DEBUG for dev
+   FLASK_DEBUG=1
    ```
 
 4. Initialize the database:

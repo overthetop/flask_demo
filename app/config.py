@@ -26,3 +26,8 @@ class Config:
         os.environ.get("DATABASE_URL")
         or "postgresql://postgres:postgres@localhost:5432/flask_showcase"
     )
+    # Sensible cookie defaults; consider overriding SECURE in production.
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "false").lower()
+    SESSION_COOKIE_SECURE = SESSION_COOKIE_SECURE in ("1", "true", "yes")

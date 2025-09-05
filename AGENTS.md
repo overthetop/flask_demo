@@ -9,9 +9,9 @@
 
 ## Build, Test, and Development Commands
 - Create venv: macOS/Linux `python3 -m venv venv && source venv/bin/activate`; Windows (cmd) `python -m venv venv && venv\Scripts\activate`; or `./activate.sh` (Unix).
-- Install deps: `pip install -r requirements.txt` (Windows may also need `pip install psycopg2-binary`).
+- Install deps: `pip install -r requirements.txt`.
 - Start DB (dev): `docker compose up -d` (exposes Postgres on 5432; default creds match compose). On first start, the container auto-applies `init-db.sql`.
-- Set env: create `.env` with `DATABASE_URL`, `SECRET_KEY`, `FLASK_ENV=development` (defaults fit compose).
+- Set env: create `.env` with `DATABASE_URL`, `SECRET_KEY`, `FLASK_DEBUG=1` (for dev; defaults fit compose).
 - Init DB schema: Docker Compose auto-applies `init-db.sql` on first start. Alternatively, run it manually via `psql` (see README for commands).
 - Run (dev): `python app.py` → http://localhost:5000
 - Run (Waitress): `python wsgi.py` → http://localhost:8000
@@ -46,7 +46,7 @@ Docstrings & Comments:
 - Single blueprint `main` in `app/routes.py`. Register in `create_app()`.
 - Use `@main.before_app_request` to load `g.user` per request.
 - Protect views with `@login_required` (from `app.auth`).
-- SQL uses psycopg2 with `RealDictCursor` for dict-like rows.
+- SQL uses psycopg with the `dict_row` row factory for dict-like rows.
 
 ## Docs & Diagrams
 - README includes a high-level architecture diagram and two Mermaid sequence diagrams (Login, Create Post).
