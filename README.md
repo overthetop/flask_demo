@@ -66,7 +66,7 @@ flowchart TD
   B[Flask App]
   C[Blueprint main routes]
   D[Auth helpers]
-  E[DB helper (psycopg2)]
+  E["DB helper (psycopg2)"]
   F[Error handlers]
   G[Templates Jinja2]
   H[Static files]
