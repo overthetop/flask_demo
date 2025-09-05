@@ -1,14 +1,12 @@
-"""Database helpers and CLI integration.
+"""Database helpers.
 
 This module manages a single psycopg2 connection per request context via
-`flask.g`, exposes a simple `init-db` Click command, and provides helpers to
-open/close the connection gracefully.
+`flask.g` and provides helpers to open/close the connection gracefully.
+Schema initialization is intentionally not handled here; run `init-db.sql`
+manually against the database to create tables.
 """
-
-import click
 import psycopg2
 from flask import current_app, g
-from flask.cli import with_appcontext
 from psycopg2.extras import RealDictCursor
 
 
@@ -34,57 +32,9 @@ def close_db(e=None):
         db.close()
 
 
-def init_db():
-    """Create required tables if they do not exist.
-
-    This function is idempotent and safe to run multiple times.
-    """
-    db = get_db()
-    current_app.logger.info("Initializing database")
-
-    # PostgreSQL setup
-    cursor = db.cursor()
-
-    # Create users table
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            username VARCHAR(80) UNIQUE NOT NULL,
-            email VARCHAR(120) UNIQUE NOT NULL,
-            password_hash VARCHAR(255) NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-        """
-    )
-
-    # Create posts table
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS posts (
-            id SERIAL PRIMARY KEY,
-            title VARCHAR(200) NOT NULL,
-            content TEXT,
-            user_id INTEGER REFERENCES users(id),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-        """
-    )
-
-    db.commit()
-    cursor.close()
-    current_app.logger.info("Database initialized")
-
-
 def init_app(app):
-    """Register teardown and CLI commands on the Flask app."""
+    """Register teardown on the Flask app.
+
+    Note: DB schema initialization is out of scope here by design.
+    """
     app.teardown_appcontext(close_db)
-    app.cli.add_command(init_db_command)
-
-
-@click.command("init-db")
-@with_appcontext
-def init_db_command():
-    """CLI: create required tables for the application."""
-    init_db()
-    click.echo("Initialized the database.")

@@ -23,7 +23,11 @@ FLASK_ENV=development
 ```
 
 5) Initialize the database schema
-- `flask --app app:create_app init-db`
+- Using Docker Compose: schema is applied automatically on first container start via `docker-entrypoint-initdb.d/init-db.sql`.
+- Otherwise, run manually:
+  - `docker compose exec -T db psql -U postgres -d flask_showcase < init-db.sql`
+  - or `psql postgresql://postgres:postgres@localhost:5432/flask_showcase -f init-db.sql`
+  - Windows (psql installed): `psql -h localhost -p 5432 -U postgres -d flask_showcase -f init-db.sql`
 
 6) Run the app
 - Dev server: `python app.py` → http://localhost:5000
@@ -37,9 +41,9 @@ Optional (dev tools):
 
 ```
 app/
-  __init__.py   # app factory, logging, blueprints, CLI
+  __init__.py   # app factory, logging, blueprints
   config.py     # env-driven configuration
-  db.py         # psycopg2 connection + CLI
+  db.py         # psycopg2 connection helpers
   auth.py       # hashing helpers + login_required
   routes.py     # views + API endpoints
   errors.py     # error handlers
@@ -62,7 +66,7 @@ flowchart TD
   B[Flask App]
   C[Blueprint main routes]
   D[Auth helpers]
-  E[DB helper psycopg2 and init-db CLI]
+  E[DB helper (psycopg2)]
   F[Error handlers]
   G[Templates Jinja2]
   H[Static files]
@@ -207,7 +211,8 @@ Notes:
 ## Using Docker Compose
 
 - `docker compose up -d` starts a local PostgreSQL at port 5432
-- The schema can be created via the Flask CLI (`init-db`) or by applying `init-db.sql` manually.
+- Schema initialization: applied automatically on first start from `init-db.sql` via the container's `docker-entrypoint-initdb.d/` mechanism.
+- Reapplying schema: either reset volumes (`docker compose down -v`) and start again, or run one of the manual `psql` commands above.
 - Stop and remove containers: `docker compose down`
 - Reset volumes: `docker compose down -v`
 
@@ -230,6 +235,23 @@ Notes:
 - Lint: `ruff check .` (auto-fix: `ruff check . --fix`)
 - Format: `ruff format` (or `--check` to verify only)
 
+## CSS
+
+- Location: `app/static/style.css` (linked in `app/templates/base.html`).
+- Structure: Single file with clear sections and comments:
+  1) Theme variables, 2) Base + reset, 3) Layout, 4) Components, 5) Utilities, 6) Responsiveness & a11y helpers.
+- Theming: Centralized CSS variables under `:root` (e.g., `--color-brand`, `--space-2`, `--radius-sm`). Override these to adjust colors, spacing, and radii app‑wide.
+- Components: Lightweight, semantic classes (`.btn`, `.card`, `.alert`, `.jumbotron`) with minimal specificity. Buttons use CSS custom properties (`--btn-bg`, `--btn-bg-hover`) to simplify variants like `.btn-secondary`.
+- Layout: Simple container, flex rows/columns (`.row`, `.col-md-6`, `.col-md-8`) and a responsive CSS grid for posts (`.posts-grid`). Columns collapse to 100% width below 768px.
+- Utilities: Small helpers like `.mt-4`, `.mb-3`, `.justify-content-center` for quick spacing/alignment without adding component bloat.
+- Accessibility: Uses `:focus-visible` outlines, legible default line-height, and a `prefers-reduced-motion` media query to disable motion for users who prefer it.
+
+Customization tips:
+- Change theme: adjust variables in the `:root` block (e.g., `--color-brand`, `--color-bg`).
+- Button variants: create a new class, e.g., `.btn-success { --btn-bg: #198754; --btn-bg-hover: #146c43; }` — no extra CSS needed beyond variables.
+- Spacing scale: prefer `var(--space-*)` over hardcoded values to keep vertical rhythm consistent.
+- New components: follow existing patterns (low specificity, rem spacing, variables for colors) and co‑locate styles within the Components section.
+
 ## Blueprints
 
 - What: Blueprints are modular collections of routes, templates, and static files that can be registered on an app. They keep related views together and make large apps maintainable.
@@ -245,9 +267,9 @@ Adding routes:
 
 ## Code Logic Overview
 
-- App factory: `app/__init__.py#create_app()` builds the Flask app, loads `Config`, configures logging, registers the `main` blueprint and error handlers, and wires the DB CLI/teardown.
+- App factory: `app/__init__.py#create_app()` builds the Flask app, loads `Config`, configures logging, registers the `main` blueprint and error handlers, and wires the DB teardown.
 - Config: `app/config.py` loads `.env` and exposes defaults for `SECRET_KEY` and `DATABASE_URL`. In non-dev, set `SECRET_KEY` explicitly.
-- Database: `app/db.py` provides `get_db()` which opens one psycopg2 connection per request and stores it in `flask.g`. Rows use `RealDictCursor` so templates and JSON can access columns by name. A Click command `init-db` creates tables idempotently.
+- Database: `app/db.py` provides `get_db()` which opens one psycopg2 connection per request and stores it in `flask.g`. Rows use `RealDictCursor` so templates and JSON can access columns by name. Schema initialization is not handled in code; run `init-db.sql` manually.
 - Auth: `app/auth.py` wraps Werkzeug’s hashing and provides `login_user`, `logout_user`, and `login_required`. The session only stores `user_id`, and the request hook populates `g.user`.
 - Routes: `app/routes.py` contains the `main` blueprint. Key endpoints:
   - `/` — list recent posts
@@ -259,3 +281,12 @@ Adding routes:
   - `/health` — readiness probe
 - Errors: `app/errors.py` registers 404 and 500 handlers that log and render friendly pages.
 - Entrypoints: `app.py` runs the dev server; `wsgi.py` serves via Waitress for production-like environments.
+
+## View Wrappers (Decorators)
+
+- What: Python decorators wrap a view function, letting you run code before/after the view executes. We use this to enforce authentication.
+- Where: `app/auth.py#login_required` returns a wrapper that checks whether the request is authenticated and redirects to `main.login` if not, otherwise it calls the original view with `*args, **kwargs`.
+- How: The decorator defines an inner `wrapper(*args, **kwargs)` that performs the check and either returns `redirect(...)` or `view(*args, **kwargs)`. Early returns short‑circuit the original view.
+- `functools.wraps`: Preserves the original function’s `__name__`, `__doc__`, and other metadata. This keeps Flask endpoint names and debugging tracebacks accurate, and avoids confusing names like `wrapper` in `url_for()` and logs.
+- Order: Decorators apply bottom‑up. Using `@main.route(...)` above `@login_required` is common and works because `wraps` preserves metadata. Keep a consistent order across views for readability.
+- Auth source: Authentication state is populated in a request hook (`@main.before_app_request`) which sets `g.user`; `login_required` prefers `g.user` and falls back to `session['user_id']`.

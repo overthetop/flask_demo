@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- app/: Flask application package. Key modules: `__init__.py` (factory), `routes.py` (Blueprint `main`), `db.py` (PostgreSQL + CLI), `auth.py` (auth helpers), `config.py` (env config), `errors.py` (handlers).
+- app/: Flask application package. Key modules: `__init__.py` (factory), `routes.py` (Blueprint `main`), `db.py` (PostgreSQL helpers), `auth.py` (auth helpers), `config.py` (env config), `errors.py` (handlers).
 - app/templates/ and app/static/: Jinja2 templates and assets.
 - app.py: Dev entry point (Flask built‑in server).
 - wsgi.py: Production entry (Waitress).
@@ -10,9 +10,9 @@
 ## Build, Test, and Development Commands
 - Create venv: macOS/Linux `python3 -m venv venv && source venv/bin/activate`; Windows (cmd) `python -m venv venv && venv\Scripts\activate`; or `./activate.sh` (Unix).
 - Install deps: `pip install -r requirements.txt` (Windows may also need `pip install psycopg2-binary`).
-- Start DB (dev): `docker compose up -d` (exposes Postgres on 5432; default creds match compose).
+- Start DB (dev): `docker compose up -d` (exposes Postgres on 5432; default creds match compose). On first start, the container auto-applies `init-db.sql`.
 - Set env: create `.env` with `DATABASE_URL`, `SECRET_KEY`, `FLASK_ENV=development` (defaults fit compose).
-- Init DB schema: `flask --app app:create_app init-db` (idempotent; uses psycopg2 directly).
+- Init DB schema: Docker Compose auto-applies `init-db.sql` on first start. Alternatively, run it manually via `psql` (see README for commands).
 - Run (dev): `python app.py` → http://localhost:5000
 - Run (Waitress): `python wsgi.py` → http://localhost:8000
 - Lint: `ruff check .` (auto-fix: `ruff check . --fix`)

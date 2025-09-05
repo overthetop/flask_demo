@@ -1,214 +1,267 @@
-/* Basic CSS for Flask Showcase Application */
+/*
+  App CSS (single file)
+  ————————————————————————————————————————————————————————————
+  Goals:
+  - Keep styles minimal, readable, and component-oriented
+  - Centralize colors/spacing via CSS variables for easy theming
+  - Provide sensible base styles and small utility helpers
 
-body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-    background-color: #f5f5f5;
-    color: #333;
+  Sections:
+  1) Theme variables
+  2) Base + reset
+  3) Layout
+  4) Components (buttons, cards, alerts, forms, jumbotron)
+  5) Utilities
+  6) Responsiveness & a11y helpers
+*/
+
+/* 1) Theme variables */
+:root {
+  /* palette */
+  --color-bg: #f5f5f5;
+  --color-surface: #ffffff;
+  --color-text: #333333;
+  --color-inverse: #ffffff;
+  --color-header-bg: #333333;
+  --color-header-link-hover: #555555;
+  --color-brand: #007bff;
+  --color-brand-hover: #0056b3;
+  --color-muted: #6c757d;
+
+  /* alerts */
+  --color-info-bg: #d1ecf1;
+  --color-info-border: #bee5eb;
+  --color-info-text: #0c5460;
+  --color-error-bg: #f8d7da;
+  --color-error-border: #f5c6cb;
+  --color-error-text: #721c24;
+
+  /* sizing */
+  --space-1: 0.5rem;
+  --space-2: 1rem;
+  --space-3: 2rem;
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --shadow-sm: 0 2px 5px rgba(0, 0, 0, 0.1);
+  --container-max: 1200px;
 }
 
+/* 2) Base + reset */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: Arial, sans-serif;
+  line-height: 1.5;
+  margin: 0;
+  color: var(--color-text);
+  background-color: var(--color-bg);
+}
+
+img,
+video { max-width: 100%; height: auto; }
+
+a {
+  color: var(--color-brand);
+  text-decoration: none;
+}
+
+a:hover { text-decoration: underline; }
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+h1, h2, h3, h4, h5, h6 { margin-top: 0; }
+
+/* 3) Layout */
 header {
-    background-color: #333;
-    color: white;
-    padding: 1rem;
+  background-color: var(--color-header-bg);
+  color: var(--color-inverse);
+  padding: var(--space-2);
 }
 
 nav {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 nav ul {
-    list-style-type: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
 }
 
-nav li {
-    margin-left: 1rem;
-}
+nav li { margin-left: var(--space-2); }
 
 nav a {
-    color: white;
-    text-decoration: none;
-    padding: 0.5rem;
-    border-radius: 3px;
+  color: var(--color-inverse);
+  text-decoration: none;
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
 }
 
-nav a:hover {
-    background-color: #555;
-}
+nav a:hover { background-color: var(--color-header-link-hover); }
 
 main {
-    max-width: 1200px;
-    margin: 2rem auto;
-    padding: 0 1rem;
+  max-width: var(--container-max);
+  margin: var(--space-3) auto;
+  padding: 0 var(--space-2);
 }
 
 .container {
-    background-color: white;
-    padding: 2rem;
-    border-radius: 5px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  background-color: var(--color-surface);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
 }
 
-h1, h2, h3, h4, h5, h6 {
-    color: #333;
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0 calc(-1 * var(--space-1));
 }
 
-a {
-    color: #007bff;
-    text-decoration: none;
+.col-md-6 {
+  flex: 0 0 50%;
+  max-width: 50%;
+  padding: 0 var(--space-1);
 }
 
-a:hover {
-    text-decoration: underline;
+.col-md-8 {
+  flex: 0 0 66.666667%;
+  max-width: 66.666667%;
+  padding: 0 var(--space-1);
 }
 
-form {
-    max-width: 600px;
-    margin: 0 auto;
+.posts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-2);
 }
 
-.form-group {
-    margin-bottom: 1rem;
+/* 4) Components */
+.jumbotron {
+  background-color: #e9ecef;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-3);
 }
+
+.jumbotron h1 { margin-top: 0; }
+.jumbotron p  { font-size: 1.1rem; }
+
+.card {
+  border: 1px solid #ddd;
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  margin-bottom: var(--space-2);
+  background-color: var(--color-surface);
+}
+
+.card-title { margin: 0 0 var(--space-1) 0; }
+.card-text  { margin-bottom: var(--space-1); }
+
+.text-muted { color: var(--color-muted); }
+
+/* Buttons */
+button,
+.btn {
+  --btn-bg: var(--color-brand);
+  --btn-bg-hover: var(--color-brand-hover);
+  --btn-text: var(--color-inverse);
+
+  background-color: var(--btn-bg);
+  color: var(--btn-text);
+  padding: var(--space-1) var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+
+button:hover,
+.btn:hover { background-color: var(--btn-bg-hover); }
+
+.btn-secondary {
+  --btn-bg: #6c757d;
+  --btn-bg-hover: #545b62;
+}
+
+/* Forms */
+form { max-width: 600px; margin: 0 auto; }
+
+.form-group { margin-bottom: var(--space-2); }
 
 label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: bold;
+  display: block;
+  margin-bottom: var(--space-1);
+  font-weight: bold;
 }
 
 input[type="text"],
 input[type="email"],
 input[type="password"],
 textarea {
-    width: 100%;
-    padding: 0.5rem;
-    border: 1px solid #ddd;
-    border-radius: 3px;
-    font-size: 1rem;
+  width: 100%;
+  padding: var(--space-1);
+  border: 1px solid #ddd;
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
+  background-color: var(--color-inverse);
+  color: var(--color-text);
 }
 
-textarea {
-    min-height: 150px;
-}
+input:focus,
+textarea:focus { border-color: var(--color-brand); outline: none; }
 
-button,
-.btn {
-    background-color: #007bff;
-    color: white;
-    padding: 0.5rem 1rem;
-    border: none;
-    border-radius: 3px;
-    cursor: pointer;
-    text-decoration: none;
-    display: inline-block;
-}
+textarea { min-height: 150px; }
 
-button:hover,
-.btn:hover {
-    background-color: #0056b3;
-}
-
-.btn-secondary {
-    background-color: #6c757d;
-}
-
-.btn-secondary:hover {
-    background-color: #545b62;
-}
-
+/* Alerts */
 .alert {
-    padding: 1rem;
-    margin-bottom: 1rem;
-    border-radius: 3px;
+  padding: var(--space-2);
+  margin-bottom: var(--space-2);
+  border-radius: var(--radius-sm);
 }
 
 .alert-info {
-    background-color: #d1ecf1;
-    border: 1px solid #bee5eb;
-    color: #0c5460;
+  background-color: var(--color-info-bg);
+  border: 1px solid var(--color-info-border);
+  color: var(--color-info-text);
 }
 
 .alert-error {
-    background-color: #f8d7da;
-    border: 1px solid #f5c6cb;
-    color: #721c24;
+  background-color: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+  color: var(--color-error-text);
 }
 
-.card {
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    padding: 1rem;
-    margin-bottom: 1rem;
-    background-color: white;
+/* 5) Utilities */
+.justify-content-center { justify-content: center; }
+.mt-4 { margin-top: var(--space-2); }
+.mb-3 { margin-bottom: var(--space-2); }
+
+/* 6) Responsiveness & a11y helpers */
+@media (max-width: 768px) {
+  .col-md-6,
+  .col-md-8 {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
 }
 
-.card-title {
-    margin-top: 0;
-    margin-bottom: 0.5rem;
-}
-
-.card-text {
-    margin-bottom: 1rem;
-}
-
-.text-muted {
-    color: #6c757d;
-}
-
-.posts-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1rem;
-}
-
-.jumbotron {
-    background-color: #e9ecef;
-    padding: 2rem;
-    border-radius: 5px;
-    margin-bottom: 2rem;
-}
-
-.jumbotron h1 {
-    margin-top: 0;
-}
-
-.jumbotron p {
-    font-size: 1.1rem;
-}
-
-.row {
-    display: flex;
-    flex-wrap: wrap;
-    margin: 0 -0.5rem;
-}
-
-.col-md-6 {
-    flex: 0 0 50%;
-    max-width: 50%;
-    padding: 0 0.5rem;
-}
-
-.col-md-8 {
-    flex: 0 0 66.666667%;
-    max-width: 66.666667%;
-    padding: 0 0.5rem;
-}
-
-.justify-content-center {
-    justify-content: center;
-}
-
-.mt-4 {
-    margin-top: 1rem;
-}
-
-.mb-3 {
-    margin-bottom: 1rem;
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
 }

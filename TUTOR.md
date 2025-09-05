@@ -131,10 +131,10 @@ Let's examine each file and directory:
 ### App Directory
 The `app/` directory contains all application code:
 
-1. **`__init__.py`** - Application factory (registers blueprint, errors, DB CLI)
+1. **`__init__.py`** - Application factory (registers blueprint, errors, DB teardown)
 2. **auth.py** - Authentication utilities
 3. **config.py** - Configuration settings
-4. **db.py** - Database connection and setup
+4. **db.py** - Database connection helpers
 5. **errors.py** - Error handlers
 6. **routes.py** - Route definitions
 7. **templates/** - HTML templates
@@ -159,7 +159,7 @@ We have two tables:
 1. **users** - Stores user information
 2. **posts** - Stores blog posts
 
-The `init_db()` function creates these tables if they don't exist.
+The schema is defined in `init-db.sql` and should be executed manually.
 
 ## Authentication System
 
@@ -324,9 +324,14 @@ if __name__ == "__main__":
    ```
 
 4. Initialize the database:
-   ```bash
-   flask --app app:create_app init-db
-   ```
+   - Using Docker Compose: schema is applied automatically on first start from `init-db.sql`.
+   - Otherwise, run manually:
+     ```bash
+     # Using local psql
+     psql postgresql://postgres:postgres@localhost:5432/flask_showcase -f init-db.sql
+     # Or into the Docker container
+     docker compose exec -T db psql -U postgres -d flask_showcase < init-db.sql
+     ```
 
 5. Run the development server:
    ```bash
@@ -348,7 +353,7 @@ if __name__ == "__main__":
 ### Learning Exercises
 1. Add a new route — Create a page in `app/routes.py` using `@main.route`.
 2. Modify a template — Change `templates/index.html` or create `templates/posts/...`.
-3. Add a new database table — Extend schema in `init_db()` or a migration.
+3. Add a new database table — Extend schema in `init-db.sql` or introduce a migration.
 4. Create a new API endpoint — Return dicts/JSON in a new route.
 5. Implement form validation — Add checks in POST handlers; flash errors.
 
@@ -426,10 +431,8 @@ API endpoints:
 - GET /api/posts/<id>: app/routes.py#L275-L298
 - GET /health: app/routes.py#L301-L305
 
-Database helpers and CLI:
+Database helpers:
 - get_db: app/db.py#L15-L26
-- init_db (tables): app/db.py#L37-L76
-- init-db CLI: app/db.py#L85-L90
 
 Authentication helpers:
 - hash_password: app/auth.py#L14-L17

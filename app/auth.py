@@ -5,9 +5,9 @@ Thin wrappers around Werkzeug's password hashing utilities and a simple
 kept in one place for clarity.
 """
 
-import functools
+from functools import wraps
 
-from flask import current_app, flash, redirect, session, url_for
+from flask import current_app, flash, g, redirect, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 
@@ -38,19 +38,30 @@ def logout_user():
     current_app.logger.info(f"User {user_id} logged out")
 
 
-def login_required(view):
-    """Decorator to require login for a view.
+def _redirect_to_login():
+    """Log, inform the user, and redirect to the login page."""
+    current_app.logger.warning("Unauthorized access attempt to protected view")
+    flash("You need to be logged in to view this page.")
+    return redirect(url_for("main.login"))
 
-    If the user is not authenticated, flashes a message and redirects to
-    the login page. Otherwise, calls the wrapped view.
+
+def is_authenticated() -> bool:
+    """Return True if the current request has an authenticated user.
+
+    Prefer `g.user` set by the request hook; fall back to the session key.
     """
+    if getattr(g, "user", None):
+        return True
+    return "user_id" in session
 
-    @functools.wraps(view)
-    def wrapped_view(**kwargs):
-        if "user_id" not in session:
-            current_app.logger.warning("Unauthorized access attempt to protected view")
-            flash("You need to be logged in to view this page.")
-            return redirect(url_for("main.login"))
-        return view(**kwargs)
 
-    return wrapped_view
+def login_required(view):
+    """Require login for a view in a straightforward, readable way."""
+
+    @wraps(view)
+    def wrapper(*args, **kwargs):
+        if not is_authenticated():
+            return _redirect_to_login()
+        return view(*args, **kwargs)
+
+    return wrapper
