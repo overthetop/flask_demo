@@ -5,6 +5,7 @@ This module manages a single psycopg2 connection per request context via
 Schema initialization is intentionally not handled here; run `init-db.sql`
 manually against the database to create tables.
 """
+
 import psycopg2
 from flask import current_app, g
 from psycopg2.extras import RealDictCursor
