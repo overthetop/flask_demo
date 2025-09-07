@@ -242,51 +242,11 @@ def post_detail(id):
     return render_template("posts/detail.html", post=post)
 
 
-@main.route("/api/posts")
-def api_posts():
-    """Return all posts as JSON for API consumers."""
-    current_app.logger.info("Accessing API posts endpoint")
-    db = get_db()
-    with db.cursor() as cursor:
-        cursor.execute(
-            """
-        SELECT p.id, p.title, p.content, p.created_at, u.username
-        FROM posts p
-        JOIN users u ON p.user_id = u.id
-        ORDER BY p.created_at DESC
-        """
-        )
-        posts = cursor.fetchall()
-
-    # Convert to list of dictionaries
-    posts_list = [dict(post) for post in posts]
-    current_app.logger.debug(f"Returning {len(posts_list)} posts via API")
-    return {"posts": posts_list}
 
 
-@main.route("/api/posts/<int:id>")
-def api_post_detail(id):
-    """Return a single post as JSON or 404 if missing."""
-    current_app.logger.debug(f"Accessing API post detail for post {id}")
-    db = get_db()
-    with db.cursor() as cursor:
-        cursor.execute(
-            """
-        SELECT p.id, p.title, p.content, p.created_at, u.username
-        FROM posts p
-        JOIN users u ON p.user_id = u.id
-        WHERE p.id = %s
-        """,
-            (id,),
-        )
-        post = cursor.fetchone()
 
-    if post is None:
-        current_app.logger.warning(f"Post {id} not found via API")
-        return {"error": "Post not found"}, 404
 
-    current_app.logger.debug(f"Returning post {id} via API")
-    return dict(post)
+
 
 
 @main.route("/health")
@@ -294,3 +254,6 @@ def health_check():
     """Lightweight health check for readiness probes."""
     current_app.logger.debug("Health check accessed")
     return {"status": "healthy"}, 200
+
+
+

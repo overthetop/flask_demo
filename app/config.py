@@ -29,5 +29,5 @@ class Config:
     # Sensible cookie defaults; consider overriding SECURE in production.
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
-    SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "false").lower()
-    SESSION_COOKIE_SECURE = SESSION_COOKIE_SECURE in ("1", "true", "yes")
+    secure_cookie = os.environ.get("SESSION_COOKIE_SECURE", "false").lower()
+    SESSION_COOKIE_SECURE = secure_cookie in ("1", "true", "yes")

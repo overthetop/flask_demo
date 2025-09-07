@@ -46,22 +46,12 @@ def _redirect_to_login():
     return redirect(url_for("main.login"))
 
 
-def is_authenticated() -> bool:
-    """Return True if the current request has an authenticated user.
-
-    Prefer `g.user` set by the request hook; fall back to the session key.
-    """
-    if getattr(g, "user", None):
-        return True
-    return "user_id" in session
-
-
 def login_required(view):
     """Require login for a view in a straightforward, readable way."""
 
     @wraps(view)
     def wrapper(*args, **kwargs):
-        if not is_authenticated():
+        if g.user is None:
             return _redirect_to_login()
         return view(*args, **kwargs)
 
