@@ -1,17 +1,47 @@
-"""Development entrypoint.
+"""Flask application - Development entrypoint.
 
-Run a local development server. Initialize the database schema manually by
-executing `init-db.sql` against your PostgreSQL instance (see README).
+This module contains the application factory and serves as the development
+entrypoint. Run `python app.py` for local development or use `wsgi.py` for
+production serving with Waitress.
 """
 
+import logging
 import os
 
-from app import create_app
+from flask import Flask
+
+from config import Config
+from db import init_app
+from errors import register_error_handlers
+from routes import main
+
+
+def setup_logging():
+    """Configure simple structured logging."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(levelname)-7s | %(name)s | %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+
+def create_app():
+    """Create and configure the Flask application."""
+    app = Flask(__name__)
+    app.config.from_object(Config)
+
+    setup_logging()
+
+    app.register_blueprint(main)
+    register_error_handlers(app)
+    init_app(app)
+
+    return app
+
 
 app = create_app()
 
 if __name__ == "__main__":
-    # Run the application
     debug_env = os.environ.get("FLASK_DEBUG") or os.environ.get("DEBUG")
     debug = str(debug_env).lower() in ("1", "true", "yes")
     app.run(

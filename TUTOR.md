@@ -56,62 +56,53 @@ Instead of creating a Flask application instance globally, we use the applicatio
 - Provides better organization
 
 ```python
-# app/__init__.py
+# app.py
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
-    
+
     # Register blueprints, error handlers, etc.
     return app
 ```
 
 ### 2. Blueprints
-Blueprints organize related routes and logic into reusable modules. This project uses a single blueprint called `main` in `app/routes.py`:
+Blueprints organize routes into modules. This project uses one blueprint (`main`) in `routes.py`:
 
 ```python
-# app/routes.py
+# routes.py
 from flask import Blueprint
 main = Blueprint("main", __name__)
 
 @main.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", posts=posts)
 ```
 
-The blueprint is registered in the app factory (`app/__init__.py#create_app()`), keeping the app modular and testable.
-
-Project-specific: error handlers are not defined on the blueprint; instead, `app/errors.py` exposes `register_error_handlers(app)` which attaches `@app.errorhandler(404)` and `@app.errorhandler(500)` handlers within the factory.
+Registered in `app.py` via `app.register_blueprint(main)`.
 
 ### 3. Request Hooks
-Request hooks run code before or after requests:
+Run code before/after requests:
 ```python
 @main.before_app_request
 def load_logged_in_user():
-    # Runs before every request across the app
+    """Load current user into g.user for each request."""
     user_id = session.get("user_id")
-    if user_id is None:
-        g.user = None
-    else:
-        # Fetch the user row and store it in g.user
+    if user_id:
         db = get_db()
-        cursor = db.cursor()
-        cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
-        g.user = cursor.fetchone()
-        cursor.close()
+        with db.cursor() as cursor:
+            cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+            g.user = cursor.fetchone()
+    else:
+        g.user = None
 ```
 
-### 4. Template Inheritance
-We use a base template that other templates extend:
+### 4. Templates
+Templates extend a base layout:
 ```html
 <!-- templates/base.html -->
-<!doctype html>
 <html>
-  <head>
-    <title>{% block title %}{% endblock %} - Flask Showcase</title>
-  </head>
-  <body>
-    {% block content %}{% endblock %}
-  </body>
+  <head><title>{% block title %}{% endblock %}</title></head>
+  <body>{% block content %}{% endblock %}</body>
 </html>
 ```
 
@@ -119,32 +110,29 @@ We use a base template that other templates extend:
 
 Let's examine each file and directory:
 
-### Root Directory Files
-1. **app.py** - Development entry point
+### Project Files
+1. **app.py** - Application factory + development entry point
 2. **wsgi.py** - Production entry point (for Waitress)
-3. **requirements.txt** - Python dependencies
-4. **.gitignore** - Files to ignore in version control
-5. **pyproject.toml** - Tooling config (Ruff, Pyright)
-6. **requirements-dev.txt** - Dev-only tools (e.g., Ruff linter)
-7. **README.md** - Project documentation
-
-### App Directory
-The `app/` directory contains all application code:
-
-1. **`__init__.py`** - Application factory (registers blueprint, errors, DB teardown)
-2. **auth.py** - Authentication utilities
 3. **config.py** - Configuration settings
 4. **db.py** - Database connection helpers
-5. **errors.py** - Error handlers
-6. **routes.py** - Route definitions
-7. **templates/** - HTML templates
+5. **auth.py** - Authentication utilities
+6. **routes.py** - Route definitions (blueprint)
+7. **errors.py** - Error handlers
+8. **templates/** - HTML templates
+9. **static/** - CSS, JavaScript, images
+10. **requirements.txt** - Python dependencies (includes Ruff linter/formatter)
+11. **pyproject.toml** - Ruff configuration
+12. **init-db.sql** - Database schema
+13. **docker-compose.yml** - Development database setup
+14. **.gitignore** - Files to ignore in version control
+15. **README.md** - Project documentation
 
 ## Database Integration
 
 Our application uses PostgreSQL for both development and production.
 
 ### Database Connection
-The `get_db()` function in `app/db.py` returns a request-scoped connection and stores it on `flask.g` so each request reuses one connection:
+The `get_db()` function in `db.py` returns a request-scoped connection and stores it on `flask.g` so each request reuses one connection:
 
 ```python
 from psycopg import connect

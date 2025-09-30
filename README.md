@@ -10,7 +10,7 @@ An educational Flask application demonstrating common patterns and best practice
 - Alternatively: `./activate.sh` (macOS/Linux)
 
 2) Install dependencies
-- `pip install -r requirements.txt`
+- `pip install -r requirements.txt` (includes Ruff linter/formatter)
 
 3) Start a local PostgreSQL (recommended)
 - `docker compose up -d`
@@ -34,26 +34,26 @@ FLASK_DEBUG=1
 - Dev server: `python app.py` → http://localhost:5000
 - Waitress: `python wsgi.py` → http://localhost:8000
 
-Optional (dev tools):
-- Install linters: `pip install -r requirements-dev.txt`
+Linting and formatting (Ruff is included in requirements.txt):
 - Lint: `ruff check .` (auto-fix: `ruff check . --fix`)
+- Format: `ruff format .`
 
 ## Project Structure
 
 ```
-app/
-  __init__.py   # app factory, logging, blueprints
-  config.py     # env-driven configuration
-  db.py         # psycopg connection helpers
-  auth.py       # hashing helpers + login_required
-  routes.py     # views + API endpoints
-  errors.py     # error handlers
-  templates/    # Jinja templates
-  static/       # CSS, images, JS
-app.py          # development entrypoint (Flask built-in server)
-wsgi.py         # production entrypoint (Waitress)
-docker-compose.yml, init-db.sql  # dev database
-requirements.txt                 # pinned deps
+app.py              # app factory + development entrypoint
+wsgi.py             # production entrypoint (Waitress)
+config.py           # env-driven configuration
+db.py               # psycopg connection helpers
+auth.py             # hashing helpers + login_required
+routes.py           # views + API endpoints (blueprint)
+errors.py           # error handlers
+templates/          # Jinja templates
+static/             # CSS, images, JS
+init-db.sql         # database schema
+docker-compose.yml  # dev database
+requirements.txt    # pinned deps (includes Ruff)
+pyproject.toml      # Ruff configuration
 ```
 
 ## Architecture
@@ -65,12 +65,12 @@ flowchart TD
   J[Dev Server app.py]
   K[Waitress wsgi.py]
   B[Flask App]
-  C[Blueprint main routes]
-  D[Auth helpers]
-  E["DB helper (psycopg)"]
-  F[Error handlers]
-  G[Templates Jinja2]
-  H[Static files]
+  C[routes.py main blueprint]
+  D[auth.py helpers]
+  E["db.py (psycopg)"]
+  F[errors.py handlers]
+  G[templates/ Jinja2]
+  H[static/ files]
   I[(PostgreSQL)]
 
   %% Edges
@@ -92,6 +92,13 @@ flowchart TD
 ```
 
 ## Features
+
+- User authentication (register, login, logout)
+- Post creation and viewing
+- Session management
+- PostgreSQL database integration
+- Structured logging
+- Health check endpoint
 
 ## Request Flow (Login)
 
@@ -168,126 +175,140 @@ sequenceDiagram
   deactivate F
 ```
 
-- Routing with Blueprints and request hooks
-- PostgreSQL integration using raw SQL (psycopg)
-- Jinja2 templates and static assets
-- Minimal auth: register/login/logout and session management
-- JSON endpoints for posts and a health check
-- Structured logging suited for dev/prod
+- Flask blueprints for route organization
+- PostgreSQL with raw SQL queries via psycopg 3
+- Jinja2 templating
+- Session-based authentication
+- Structured logging
+- Production-ready with Waitress WSGI server
 
 ## API Endpoints
 
-- `GET /api/posts` — List all posts
-- `GET /api/posts/<id>` — Get a single post
 - `GET /health` — Health check
 
 ## Configuration
 
-- `DATABASE_URL` — PostgreSQL connection string
-- `SECRET_KEY` — Set to a strong value in non-dev environments
-- `FLASK_DEBUG=1` — Enables debug features locally
+Environment variables (set in `.env` file):
 
-Notes:
-- When `SECRET_KEY` is omitted, a random one is generated at start. This is fine for local dev but will invalidate sessions between restarts.
-- Default `DATABASE_URL` matches the docker-compose service for convenience.
+- `DATABASE_URL` — PostgreSQL connection string (default: `postgresql://postgres:postgres@localhost:5432/flask_showcase`)
+- `SECRET_KEY` — Secret for session signing (default: random, regenerated on restart)
+- `FLASK_DEBUG` — Enable debug mode (set to `1` or `true` for development)
 
-## Request Context (flask.g)
+**Notes:**
+- Default `DATABASE_URL` matches the docker-compose service
+- Omitting `SECRET_KEY` generates a random one (fine for dev, but sessions invalidate on restart)
+- In production, always set `SECRET_KEY` explicitly
 
-- Purpose: Per-request scratchpad for transient data shared across view functions, helpers, and templates.
-- Scope: Context-local; each request gets its own `g` and it is cleared on teardown.
-- Current user: `@main.before_app_request` sets `g.user` to a user row (or `None`) so views/templates can rely on it.
-- DB connection: `app/db.py#get_db()` stores a connection in `g.db` for reuse within the request; `close_db()` closes it in `app.teardown_appcontext`.
-- Templates: `base.html`, `index.html`, `posts/*`, and `auth/profile.html` read `g.user` to toggle UI and show user details.
-- Guidance: Store only request-scoped data; do not use `g` for cross-request state or persistence.
+## Key Concepts
 
-### SECRET_KEY Usage
+**Request Context (flask.g)**
+- Stores per-request data (cleared after each request)
+- `g.user` - Current user loaded by `@main.before_app_request`
+- `g.db` - Database connection managed by `get_db()`
 
-- Purpose: Used by Flask to sign session cookies and flashed messages.
-- Where set: `app/config.py` (`SECRET_KEY` from env or random fallback).
-- Where loaded: `app/__init__.py` via `app.config.from_object(Config)`.
-- Where exercised: session access in `app/auth.py` and `app/routes.py`, and `flash()`/`get_flashed_messages()` in views/templates.
-- Caveat: No CSRF extension is configured; `SECRET_KEY` is not used for CSRF tokens here.
-- Stability: If the key changes between runs (e.g., using the random fallback), existing sessions and flashes become invalid after restart.
+**Session Management**
+- Session stores only `user_id`
+- User data loaded into `g.user` on each request
+- Signed with `SECRET_KEY`
 
-## Using Docker Compose
+**Database Pattern**
+- One connection per request via `flask.g`
+- Returns rows as dictionaries (`dict_row` factory)
+- Automatic cleanup via `teardown_appcontext`
 
-- `docker compose up -d` starts a local PostgreSQL at port 5432
-- Schema initialization: applied automatically on first start from `init-db.sql` via the container's `docker-entrypoint-initdb.d/` mechanism.
-- Reapplying schema: either reset volumes (`docker compose down -v`) and start again, or run one of the manual `psql` commands above.
-- Stop and remove containers: `docker compose down`
-- Reset volumes: `docker compose down -v`
+## Docker Compose Commands
+
+```bash
+docker compose up -d          # Start PostgreSQL
+docker compose ps             # Check status
+docker compose down           # Stop containers
+docker compose down -v        # Stop and remove volumes
+```
+
+Schema is auto-applied from `init-db.sql` on first start.
 
 ## Troubleshooting
 
-- psycopg on Windows: ensure `pip` is up to date. If you encounter build issues, use prebuilt wheels by installing normally with `pip install psycopg`.
-- Env not loading: ensure `.env` is at project root and readable; we use `python-dotenv`.
-- DB connection failures: verify `DATABASE_URL` and that PostgreSQL is running (`docker compose ps`).
+**Database connection errors:**
+- Check PostgreSQL is running: `docker compose ps`
+- Verify `DATABASE_URL` in `.env`
 
-## Security Notes
+**Environment variables not loading:**
+- Ensure `.env` file exists in project root
+- Check file permissions
 
-- Never commit secrets; use `.env` or a secrets manager.
-- Use a strong `SECRET_KEY` in staging/production.
-- Prefer running behind a production WSGI server like Waitress or Gunicorn.
+**psycopg installation issues (Windows):**
+- Update pip: `python -m pip install --upgrade pip`
+- Use binary package: `pip install psycopg[binary]`
 
-## Linting
+## Security
 
-- Ruff is configured via `pyproject.toml`.
-- Install dev tools: `pip install -r requirements-dev.txt`
-- Lint: `ruff check .` (auto-fix: `ruff check . --fix`)
-- Format: `ruff format` (or `--check` to verify only)
+- Never commit `.env` file (already in `.gitignore`)
+- Generate strong `SECRET_KEY`: `openssl rand -hex 32`
+- Use Waitress or Gunicorn in production (not Flask dev server)
+- Passwords are hashed with Werkzeug's `generate_password_hash()`
+- SQL injection prevented via parameterized queries
 
-## CSS
+## Development Tools
 
-- Location: `app/static/style.css` (linked in `app/templates/base.html`).
-- Structure: Single file with clear sections and comments:
-  1) Theme variables, 2) Base + reset, 3) Layout, 4) Components, 5) Utilities, 6) Responsiveness & a11y helpers.
-- Theming: Centralized CSS variables under `:root` (e.g., `--color-brand`, `--space-2`, `--radius-sm`). Override these to adjust colors, spacing, and radii app‑wide.
-- Components: Lightweight, semantic classes (`.btn`, `.card`, `.alert`, `.jumbotron`) with minimal specificity. Buttons use CSS custom properties (`--btn-bg`, `--btn-bg-hover`) to simplify variants like `.btn-secondary`.
-- Layout: Simple container, flex rows/columns (`.row`, `.col-md-6`, `.col-md-8`) and a responsive CSS grid for posts (`.posts-grid`). Columns collapse to 100% width below 768px.
-- Utilities: Small helpers like `.mt-4`, `.mb-3`, `.justify-content-center` for quick spacing/alignment without adding component bloat.
-- Accessibility: Uses `:focus-visible` outlines, legible default line-height, and a `prefers-reduced-motion` media query to disable motion for users who prefer it.
+**Ruff** (linter & formatter, included in `requirements.txt`):
+```bash
+ruff check .        # Lint
+ruff check . --fix  # Auto-fix
+ruff format .       # Format
+```
 
-Customization tips:
-- Change theme: adjust variables in the `:root` block (e.g., `--color-brand`, `--color-bg`).
-- Button variants: create a new class, e.g., `.btn-success { --btn-bg: #198754; --btn-bg-hover: #146c43; }` — no extra CSS needed beyond variables.
-- Spacing scale: prefer `var(--space-*)` over hardcoded values to keep vertical rhythm consistent.
-- New components: follow existing patterns (low specificity, rem spacing, variables for colors) and co‑locate styles within the Components section.
+Configuration in `pyproject.toml`:
+- Line length: 88
+- Target: Python 3.12
+- Rules: E (pycodestyle), F (pyflakes), I (isort), B (bugbear), UP (pyupgrade), C4 (comprehensions)
 
-## Blueprints
 
-- What: Blueprints are modular collections of routes, templates, and static files that can be registered on an app. They keep related views together and make large apps maintainable.
-- Where: This project defines a single blueprint `main` in `app/routes.py`.
-- Registration: The blueprint is registered in `app/__init__.py` inside `create_app()`.
-- Contents: `main` contains server-rendered pages (index, posts, auth forms) and JSON APIs (`/api/posts`, `/api/posts/<id>`), plus a `/health` endpoint.
-- Lifecycle hook: `@main.before_app_request` loads the current user into `g.user` so every view/template can rely on it being set or None.
+## Adding Routes
 
-Adding routes:
-- Define a function and decorate it with `@main.route("/path")` in `app/routes.py`.
-- Protect a route by stacking `@login_required` above the view (imported from `app.auth`).
-- Return templates with `render_template(...)` or JSON/dicts for API responses.
+1. Define function in `routes.py`:
+```python
+@main.route("/your-path")
+def your_view():
+    return render_template("your_template.html")
+```
 
-## Code Logic Overview
+2. Protect with authentication:
+```python
+@main.route("/protected")
+@login_required
+def protected_view():
+    # g.user is guaranteed to exist here
+    return render_template("protected.html")
+```
 
-- App factory: `app/__init__.py#create_app()` builds the Flask app, loads `Config`, configures logging, registers the `main` blueprint and error handlers, and wires the DB teardown.
-- Config: `app/config.py` loads `.env` and exposes defaults for `SECRET_KEY` and `DATABASE_URL`. In non-dev, set `SECRET_KEY` explicitly.
-- Database: `app/db.py` provides `get_db()` which opens one psycopg connection per request and stores it in `flask.g`. Rows use the `dict_row` row factory so templates and JSON can access columns by name. Schema initialization is not handled in code; run `init-db.sql` manually.
-- Auth: `app/auth.py` wraps Werkzeug’s hashing and provides `login_user`, `logout_user`, and `login_required`. The session only stores `user_id`, and the request hook populates `g.user`.
-- Routes: `app/routes.py` contains the `main` blueprint. Key endpoints:
-  - `/` — list recent posts
-  - `/register` — create user with hashed password
-  - `/login` and `/logout` — manage session
-  - `/profile` — requires login
-  - `/posts`, `/posts/create`, `/posts/<id>` — list/create/view posts
-  - `/api/posts`, `/api/posts/<id>` — JSON APIs
-  - `/health` — readiness probe
-- Errors: `app/errors.py` registers 404 and 500 handlers that log and render friendly pages.
-- Entrypoints: `app.py` runs the dev server; `wsgi.py` serves via Waitress for production-like environments.
+## Code Overview
 
-## View Wrappers (Decorators)
+**app.py** - Application factory and dev server
+- Creates Flask app instance
+- Configures simple structured logging
+- Registers blueprint, error handlers, and database teardown
 
-- What: Python decorators wrap a view function, letting you run code before/after the view executes. We use this to enforce authentication.
-- Where: `app/auth.py#login_required` returns a wrapper that checks whether the request is authenticated and redirects to `main.login` if not, otherwise it calls the original view with `*args, **kwargs`.
-- How: The decorator defines an inner `wrapper(*args, **kwargs)` that performs the check and either returns `redirect(...)` or `view(*args, **kwargs)`. Early returns short‑circuit the original view.
-- `functools.wraps`: Preserves the original function’s `__name__`, `__doc__`, and other metadata. This keeps Flask endpoint names and debugging tracebacks accurate, and avoids confusing names like `wrapper` in `url_for()` and logs.
-- Order: Decorators apply bottom‑up. Using `@main.route(...)` above `@login_required` is common and works because `wraps` preserves metadata. Keep a consistent order across views for readability.
-- Auth source: Authentication state is populated in a request hook (`@main.before_app_request`) which sets `g.user`; `login_required` prefers `g.user` and falls back to `session['user_id']`.
+**config.py** - Environment configuration
+- `SECRET_KEY` - Session signing (random fallback for dev)
+- `DATABASE_URL` - PostgreSQL connection string
+
+**db.py** - Database helpers
+- `get_db()` - Request-scoped connection with dict_row factory
+- `close_db()` - Closes connection on request teardown
+
+**auth.py** - Authentication
+- `login_user(user_id)` - Store user in session
+- `logout_user()` - Clear session
+- `login_required` - Decorator for protected routes
+
+**routes.py** - Blueprint with all routes
+- `/` - Home page with posts
+- `/register`, `/login`, `/logout` - Auth flows
+- `/profile` - User profile (requires login)
+- `/posts`, `/posts/create`, `/posts/<post_id>` - Post management
+- `/health` - Health check endpoint
+
+**errors.py** - Error handlers
+- 404 and 500 pages with logging
+
