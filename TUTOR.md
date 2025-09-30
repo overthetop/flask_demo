@@ -295,11 +295,11 @@ if __name__ == "__main__":
 ### Development Mode
 1. Create a virtual environment:
    ```bash
-   python3 -m venv venv
+   python3 -m venv .venv
    # macOS/Linux
-   source venv/bin/activate
+   source .venv/bin/activate
    # Windows (cmd)
-   # python -m venv venv && venv\Scripts\activate
+   # python -m venv .venv && .venv\Scripts\activate
    ```
 
 2. Install dependencies:
