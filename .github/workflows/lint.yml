@@ -11,23 +11,22 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-        
-    - name: Install dependencies (runtime + dev)
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -r requirements-dev.txt
+      - uses: actions/checkout@v3
 
-    - name: Ruff lint
-      run: |
-        ruff check . --output-format=github
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
-    - name: Ruff format (check only)
-      run: |
-        ruff format --check
+      - name: Install dependencies (runtime + dev)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt        
+
+      - name: Ruff lint
+        run: |
+          ruff check . --output-format=github
+
+      - name: Ruff format (check only)
+        run: |
+          ruff format --check
