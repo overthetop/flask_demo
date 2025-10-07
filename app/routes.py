@@ -31,7 +31,6 @@ from app.db import get_db
 
 main = Blueprint("main", __name__)
 
-
 @main.before_app_request
 def load_logged_in_user():
     """Load the current user into `g.user` for each request.
@@ -52,6 +51,12 @@ def load_logged_in_user():
             g.user = cursor.fetchone()
         current_app.logger.debug(f"Loaded user {user_id}")
 
+
+@main.route("/about-us")
+def about_us():
+    """Render the home page with the most recent posts."""
+    current_app.logger.debug(f"About us")
+    return render_template("about_us/index.html")
 
 @main.route("/")
 def index():
