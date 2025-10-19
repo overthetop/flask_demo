@@ -4,6 +4,55 @@
 
 {% block content %}
 <article class="card">
-  ivan
+  <div class="about-container">
+    <h1>About Our Company</h1>
+    <p>Welcome to our innovative platform designed to bring you the best services tailored to your needs.</p>
+    
+    <div class="team-section">
+      <h2>Our Story</h2>
+      <p>Founded in 2020, we started as a small team with a big vision to transform how people interact with technology.</p>
+    </div>
+    
+    <div class="team-section">
+      <h2>Our Mission</h2>
+      <p>We strive to deliver exceptional quality and value to our customers through innovation and dedication.</p>
+    </div>
+    
+    <div class="team-section">
+      <h2>Our Team</h2>
+      <p>Our diverse team of experts brings years of experience and a passion for excellence in everything we do.</p>
+    </div>
+    
+    <div class="values-section">
+      <h3>Our Core Values</h3>
+      <ul>
+        <li>Innovation and creativity</li>
+        <li>Integrity and transparency</li>
+        <li>Customer-centric approach</li>
+        <li>Continuous improvement</li>
+      </ul>
+    </div>
+  </div>
+  
+  <div class="contact-section">
+    <h2>Contact Us</h2>
+    <form method="POST" action="{{ url_for('main.about_us') }}">
+      <div class="form-group">
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required>
+      </div>
+      <div class="form-group">
+        <label for="message">Message:</label>
+        <textarea id="message" name="message" rows="5" required></textarea>
+      </div>
+      <button type="submit">Send Message</button>
+    </form>
+    
+    {% if message_sent %}
+      <div class="success-message">
+        Thank you for your message! We'll get back to you soon.
+      </div>
+    {% endif %}
+  </div>
 </article>
 {% endblock %}
