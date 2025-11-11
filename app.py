@@ -30,7 +30,6 @@ def create_app():
     setup_logging()
 
     app = Flask(__name__)
-    Config.validate()  # Validate config before loading
     app.config.from_object(Config)
 
     app.register_blueprint(main)

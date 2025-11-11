@@ -1,7 +1,5 @@
 """Application routes and views."""
 
-import re
-
 from flask import (
     Blueprint,
     current_app,
@@ -16,30 +14,9 @@ from flask import (
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from auth import login_required, login_user, logout_user
-from db import get_db, transaction
+from db import get_db
 
 main = Blueprint("main", __name__)
-
-# Input validation constants
-USERNAME_MIN_LENGTH = 3
-USERNAME_MAX_LENGTH = 50
-PASSWORD_MIN_LENGTH = 6
-EMAIL_MAX_LENGTH = 100
-TITLE_MAX_LENGTH = 200
-CONTENT_MAX_LENGTH = 10000
-
-
-def is_valid_email(email: str) -> bool:
-    """Basic email validation using regex.
-
-    Args:
-        email: Email address to validate.
-
-    Returns:
-        bool: True if email format is valid.
-    """
-    pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
-    return bool(re.match(pattern, email))
 
 
 @main.before_app_request
@@ -74,62 +51,36 @@ def index():
 
 @main.route("/register", methods=("GET", "POST"))
 def register():
-    """Register a new user with validation."""
+    """Register a new user."""
     if request.method != "POST":
         return render_template("auth/register.html")
 
-    username = request.form.get("username", "").strip()
-    email = request.form.get("email", "").strip()
-    password = request.form.get("password", "")
+    username = request.form["username"]
+    email = request.form["email"]
+    password = request.form["password"]
 
     if not username or not email or not password:
         flash("All fields are required.")
         return render_template("auth/register.html")
 
-    if len(username) < USERNAME_MIN_LENGTH or len(username) > USERNAME_MAX_LENGTH:
-        msg = (
-            f"Username must be between {USERNAME_MIN_LENGTH} "
-            f"and {USERNAME_MAX_LENGTH} characters."
+    db = get_db()
+    with db.cursor() as cursor:
+        cursor.execute(
+            "SELECT id FROM users WHERE username = %s OR email = %s",
+            (username, email),
         )
-        flash(msg)
-        return render_template("auth/register.html")
+        if cursor.fetchone():
+            flash("Username or email already exists.")
+            return render_template("auth/register.html")
 
-    if len(email) > EMAIL_MAX_LENGTH:
-        flash(f"Email must be less than {EMAIL_MAX_LENGTH} characters.")
-        return render_template("auth/register.html")
+        cursor.execute(
+            "INSERT INTO users (username, email, password_hash) VALUES (%s, %s, %s)",
+            (username, email, generate_password_hash(password)),
+        )
+        db.commit()
 
-    if not is_valid_email(email):
-        flash("Please enter a valid email address.")
-        return render_template("auth/register.html")
-
-    if len(password) < PASSWORD_MIN_LENGTH:
-        flash(f"Password must be at least {PASSWORD_MIN_LENGTH} characters.")
-        return render_template("auth/register.html")
-
-    try:
-        with transaction() as conn:
-            with conn.cursor() as cursor:
-                cursor.execute(
-                    "SELECT id FROM users WHERE username = %s OR email = %s",
-                    (username, email),
-                )
-                if cursor.fetchone():
-                    flash("Username or email already exists.")
-                    return render_template("auth/register.html")
-
-                sql = """
-                    INSERT INTO users (username, email, password_hash)
-                    VALUES (%s, %s, %s)
-                """
-                cursor.execute(sql, (username, email, generate_password_hash(password)))
-
-        flash("Registration successful! Please log in.")
-        return redirect(url_for("main.login"))
-
-    except Exception as e:
-        current_app.logger.error(f"Registration failed for {username}: {e}")
-        flash("Registration failed. Please try again.")
-        return render_template("auth/register.html")
+    flash("Registration successful! Please log in.")
+    return redirect(url_for("main.login"))
 
 
 @main.route("/login", methods=("GET", "POST"))
@@ -195,36 +146,23 @@ def create_post():
     if request.method != "POST":
         return render_template("posts/create.html")
 
-    title = request.form.get("title", "").strip()
-    content = request.form.get("content", "").strip()
+    title = request.form["title"]
+    content = request.form["content"]
 
     if not title:
         flash("Title is required.")
         return render_template("posts/create.html")
 
-    if len(title) > TITLE_MAX_LENGTH:
-        flash(f"Title must be less than {TITLE_MAX_LENGTH} characters.")
-        return render_template("posts/create.html")
+    db = get_db()
+    with db.cursor() as cursor:
+        cursor.execute(
+            "INSERT INTO posts (title, content, user_id) VALUES (%s, %s, %s)",
+            (title, content, g.user["id"]),
+        )
+        db.commit()
 
-    if len(content) > CONTENT_MAX_LENGTH:
-        flash(f"Content must be less than {CONTENT_MAX_LENGTH} characters.")
-        return render_template("posts/create.html")
-
-    try:
-        with transaction() as conn:
-            with conn.cursor() as cursor:
-                cursor.execute(
-                    "INSERT INTO posts (title, content, user_id) VALUES (%s, %s, %s)",
-                    (title, content, g.user["id"]),
-                )
-
-        flash("Post created successfully!")
-        return redirect(url_for("main.posts"))
-
-    except Exception as e:
-        current_app.logger.error(f"Post creation failed: {e}")
-        flash("Failed to create post. Please try again.")
-        return render_template("posts/create.html")
+    flash("Post created successfully!")
+    return redirect(url_for("main.posts"))
 
 
 @main.route("/posts/<int:post_id>")
