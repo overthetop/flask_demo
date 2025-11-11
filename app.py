@@ -27,10 +27,11 @@ def setup_logging():
 
 def create_app():
     """Create and configure the Flask application."""
-    app = Flask(__name__)
-    app.config.from_object(Config)
-
     setup_logging()
+
+    app = Flask(__name__)
+    Config.validate()  # Validate config before loading
+    app.config.from_object(Config)
 
     app.register_blueprint(main)
     register_error_handlers(app)
