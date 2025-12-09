@@ -1,62 +1,263 @@
 # Flask Showcase Application
 
-An educational Flask application demonstrating common patterns and best practices with a minimal dependency set: raw SQL via psycopg, app factory + blueprints, simple auth, templates, JSON APIs, and production serving via Waitress.
+An educational Flask application demonstrating modern web development patterns with minimal dependencies. Learn Flask basics through clean, well-documented code.
 
-## Quickstart
+## Table of Contents
 
-1) Create and activate a venv
-- macOS/Linux: `python3 -m venv venv && source venv/bin/activate`
-- Windows (cmd): `python -m venv venv && venv\Scripts\activate`
-- Alternatively: `./activate.sh` (macOS/Linux)
+- [Technologies](#technologies)
+- [Quick Start](#quick-start)
+- [Project Structure](#project-structure)
+- [Features](#features)
+- [Configuration](#configuration)
+- [Development](#development)
+- [API Endpoints](#api-endpoints)
+- [Architecture](#architecture)
+- [Key Concepts](#key-concepts)
+- [Troubleshooting](#troubleshooting)
+- [Security](#security)
 
-2) Install dependencies
-- `pip install -r requirements.txt` (includes Ruff linter/formatter)
+---
 
-3) Start a local PostgreSQL (recommended)
-- `docker compose up -d`
+## Technologies
 
-4) Configure environment (`.env` in project root)
+This application demonstrates:
+- **Flask 3** - Modern Python web framework
+- **PostgreSQL** - Relational database with raw SQL via psycopg 3
+- **Jinja2** - Template engine for dynamic HTML
+- **Waitress** - Production WSGI server
+- **Werkzeug** - Password hashing and security
+- **Ruff** - Fast Python linter and formatter
+
+**Patterns**: Application factory, blueprints, session-based authentication, request context
+
+---
+
+## Quick Start
+
+### 1. Set Up Python Environment
+
+**Create and activate virtual environment:**
+
+```bash
+# macOS/Linux
+python3 -m venv venv && source venv/bin/activate
+
+# Windows
+python -m venv venv && venv\Scripts\activate
+
+# Or use the convenience script (macOS/Linux)
+./activate.sh
 ```
+
+**Install dependencies:**
+```bash
+pip install -r requirements.txt
+```
+
+### 2. Start PostgreSQL Database
+
+**Using Docker (recommended):**
+```bash
+docker compose up -d
+```
+
+The database schema (`init-db.sql`) is applied automatically on first start.
+
+### 3. Configure Environment
+
+Create a `.env` file in the project root:
+
+```env
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/flask_showcase
 SECRET_KEY=dev-change-me
-# Flask 3: use FLASK_DEBUG for dev
 FLASK_DEBUG=1
 ```
 
-5) Initialize the database schema
-- Using Docker Compose: schema is applied automatically on first container start via `docker-entrypoint-initdb.d/init-db.sql`.
-- Otherwise, run manually:
-  - `docker compose exec -T db psql -U postgres -d flask_showcase < init-db.sql`
-  - or `psql postgresql://postgres:postgres@localhost:5432/flask_showcase -f init-db.sql`
-  - Windows (psql installed): `psql -h localhost -p 5432 -U postgres -d flask_showcase -f init-db.sql`
+**Note**: For production, generate a secure key with `openssl rand -hex 32`
 
-6) Run the app
-- Dev server: `python app.py` → http://localhost:5000
-- Waitress: `python wsgi.py` → http://localhost:8000
+### 4. Run the Application
 
-Linting and formatting (Ruff is included in requirements.txt):
-- Lint: `ruff check .` (auto-fix: `ruff check . --fix`)
-- Format: `ruff format .`
+**Development server** (with auto-reload):
+```bash
+python app.py
+```
+Open http://localhost:5000
+
+**Production server** (Waitress):
+```bash
+python wsgi.py
+```
+Open http://localhost:8000
+
+---
 
 ## Project Structure
 
 ```
-app.py              # app factory + development entrypoint
-wsgi.py             # production entrypoint (Waitress)
-config.py           # env-driven configuration
-db.py               # psycopg connection helpers
-auth.py             # hashing helpers + login_required
-routes.py           # views + API endpoints (blueprint)
-errors.py           # error handlers
-templates/          # Jinja templates
-static/             # CSS, images, JS
-init-db.sql         # database schema
-docker-compose.yml  # dev database
-requirements.txt    # pinned deps (includes Ruff)
-pyproject.toml      # Ruff configuration
+├── app.py              # App factory + dev entrypoint
+├── wsgi.py             # Production entrypoint (Waitress)
+├── config.py           # Environment-driven configuration
+├── db.py               # Database connection helpers
+├── auth.py             # Authentication helpers
+├── routes.py           # All routes and views (blueprint)
+├── errors.py           # Error handlers (404, 500)
+├── templates/          # Jinja2 HTML templates
+├── static/             # CSS, images, JavaScript
+├── init-db.sql         # PostgreSQL schema
+├── docker-compose.yml  # Dev database setup
+├── requirements.txt    # Python dependencies
+└── pyproject.toml      # Ruff configuration
 ```
 
+**Key Files:**
+- **app.py** - Creates Flask app, registers blueprints
+- **routes.py** - All application routes and views
+- **auth.py** - `login_required` decorator, password helpers
+- **db.py** - Request-scoped database connections
+- **config.py** - Environment variables and settings
+
+---
+
+## Features
+
+- User registration and authentication
+- Session management with secure cookies
+- Post creation and viewing
+- Protected routes with `@login_required`
+- PostgreSQL integration with parameterized queries
+- Health check endpoint for monitoring
+- Structured logging
+- Production-ready WSGI server
+
+---
+
+## Configuration
+
+Configure the application using environment variables in a `.env` file:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DATABASE_URL` | PostgreSQL connection string | `postgresql://postgres:postgres@localhost:5432/flask_showcase` |
+| `SECRET_KEY` | Secret for session signing | Random (regenerates on restart) |
+| `FLASK_DEBUG` | Enable debug mode | `0` (disabled) |
+
+**Important Notes:**
+- The default `DATABASE_URL` matches the Docker Compose service
+- Omitting `SECRET_KEY` generates a random one (dev only - sessions invalidate on restart)
+- **Always set `SECRET_KEY` explicitly in production**
+
+**Generate a secure secret key:**
+```bash
+openssl rand -hex 32
+```
+
+---
+
+## Development
+
+### Code Quality Tools
+
+**Ruff** is included in `requirements.txt` for linting and formatting:
+
+```bash
+# Check for issues
+ruff check .
+
+# Auto-fix issues
+ruff check . --fix
+
+# Format code
+ruff format .
+```
+
+**Configuration** (in `pyproject.toml`):
+- Line length: 88 characters
+- Target: Python 3.12
+- Rules: E (pycodestyle), F (pyflakes), I (isort), B (bugbear), UP (pyupgrade), C4 (comprehensions)
+
+### Database Commands
+
+**Docker Compose:**
+```bash
+# Start database
+docker compose up -d
+
+# Check status
+docker compose ps
+
+# View logs
+docker compose logs -f
+
+# Stop database
+docker compose down
+
+# Stop and remove data
+docker compose down -v
+```
+
+**Manual schema initialization** (if not using Docker Compose):
+```bash
+# Using psql
+psql postgresql://postgres:postgres@localhost:5432/flask_showcase -f init-db.sql
+
+# Or with Docker
+docker compose exec -T db psql -U postgres -d flask_showcase < init-db.sql
+```
+
+### Adding New Routes
+
+**Basic route** in `routes.py`:
+```python
+@main.route("/your-path")
+def your_view():
+    return render_template("your_template.html")
+```
+
+**Protected route** (requires authentication):
+```python
+@main.route("/protected")
+@login_required
+def protected_view():
+    # g.user is guaranteed to exist here
+    return render_template("protected.html", user=g.user)
+```
+
+---
+
+## API Endpoints
+
+### Web Routes
+
+| Route | Method | Description | Auth Required |
+|-------|--------|-------------|---------------|
+| `/` | GET | Home page with posts | No |
+| `/register` | GET/POST | User registration | No |
+| `/login` | GET/POST | User login | No |
+| `/logout` | POST | User logout | Yes |
+| `/profile` | GET | User profile page | Yes |
+| `/posts` | GET | List all posts | No |
+| `/posts/create` | GET/POST | Create new post | Yes |
+| `/posts/<post_id>` | GET | View single post | No |
+| `/health` | GET | Health check endpoint | No |
+
+### Health Check
+
+```bash
+curl http://localhost:5000/health
+```
+
+Response:
+```json
+{
+  "status": "ok"
+}
+```
+
+---
+
 ## Architecture
+
+### High-Level Overview
 
 ```mermaid
 flowchart TD
@@ -91,16 +292,7 @@ flowchart TD
   E --> I
 ```
 
-## Features
-
-- User authentication (register, login, logout)
-- Post creation and viewing
-- Session management
-- PostgreSQL database integration
-- Structured logging
-- Health check endpoint
-
-## Request Flow (Login)
+### Request Flow: Login
 
 ```mermaid
 sequenceDiagram
@@ -133,7 +325,7 @@ sequenceDiagram
   deactivate F
 ```
 
-## Request Flow (Create Post)
+### Request Flow: Create Post
 
 ```mermaid
 sequenceDiagram
@@ -175,140 +367,140 @@ sequenceDiagram
   deactivate F
 ```
 
-- Flask blueprints for route organization
-- PostgreSQL with raw SQL queries via psycopg 3
-- Jinja2 templating
-- Session-based authentication
-- Structured logging
-- Production-ready with Waitress WSGI server
-
-## API Endpoints
-
-- `GET /health` — Health check
-
-## Configuration
-
-Environment variables (set in `.env` file):
-
-- `DATABASE_URL` — PostgreSQL connection string (default: `postgresql://postgres:postgres@localhost:5432/flask_showcase`)
-- `SECRET_KEY` — Secret for session signing (default: random, regenerated on restart)
-- `FLASK_DEBUG` — Enable debug mode (set to `1` or `true` for development)
-
-**Notes:**
-- Default `DATABASE_URL` matches the docker-compose service
-- Omitting `SECRET_KEY` generates a random one (fine for dev, but sessions invalidate on restart)
-- In production, always set `SECRET_KEY` explicitly
+---
 
 ## Key Concepts
 
-**Request Context (flask.g)**
-- Stores per-request data (cleared after each request)
-- `g.user` - Current user loaded by `@main.before_app_request`
-- `g.db` - Database connection managed by `get_db()`
+### Request Context (flask.g)
 
-**Session Management**
-- Session stores only `user_id`
-- User data loaded into `g.user` on each request
-- Signed with `SECRET_KEY`
+Per-request storage that's cleared after each request:
+- **`g.user`** - Current user loaded by `@main.before_app_request`
+- **`g.db`** - Database connection managed by `get_db()`
 
-**Database Pattern**
+### Session Management
+
+- Session stores only `user_id` (minimal data)
+- Full user data loaded into `g.user` on each request
+- Sessions are signed with `SECRET_KEY` for security
+
+### Database Pattern
+
 - One connection per request via `flask.g`
 - Returns rows as dictionaries (`dict_row` factory)
 - Automatic cleanup via `teardown_appcontext`
+- Parameterized queries prevent SQL injection
 
-## Docker Compose Commands
+**Example database usage:**
+```python
+from db import get_db
 
-```bash
-docker compose up -d          # Start PostgreSQL
-docker compose ps             # Check status
-docker compose down           # Stop containers
-docker compose down -v        # Stop and remove volumes
+db = get_db()
+with db.cursor() as cursor:
+    cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+    user = cursor.fetchone()
 ```
 
-Schema is auto-applied from `init-db.sql` on first start.
+---
 
 ## Troubleshooting
 
-**Database connection errors:**
-- Check PostgreSQL is running: `docker compose ps`
-- Verify `DATABASE_URL` in `.env`
+### Database Connection Errors
 
-**Environment variables not loading:**
-- Ensure `.env` file exists in project root
-- Check file permissions
+**Check if PostgreSQL is running:**
+```bash
+docker compose ps
+```
 
-**psycopg installation issues (Windows):**
-- Update pip: `python -m pip install --upgrade pip`
-- Use binary package: `pip install psycopg[binary]`
+**Verify configuration:**
+- Check `DATABASE_URL` in `.env` file
+- Ensure database exists: `flask_showcase`
+- Verify credentials match Docker Compose settings
+
+### Environment Variables Not Loading
+
+- Ensure `.env` file exists in project root (same directory as `app.py`)
+- Check file permissions are readable
+- Restart the application after changing `.env`
+
+### psycopg Installation Issues (Windows)
+
+If you encounter build errors:
+
+```bash
+# Update pip
+python -m pip install --upgrade pip
+
+# Install binary package
+pip install psycopg[binary]
+```
+
+### Port Already in Use
+
+If port 5000 or 8000 is already in use:
+
+```bash
+# Find process using port
+# macOS/Linux
+lsof -i :5000
+
+# Windows
+netstat -ano | findstr :5000
+
+# Kill the process or use a different port
+python app.py  # Set FLASK_RUN_PORT=5001 in .env
+```
+
+---
 
 ## Security
 
-- Never commit `.env` file (already in `.gitignore`)
-- Generate strong `SECRET_KEY`: `openssl rand -hex 32`
-- Use Waitress or Gunicorn in production (not Flask dev server)
-- Passwords are hashed with Werkzeug's `generate_password_hash()`
-- SQL injection prevented via parameterized queries
+### Best Practices Implemented
 
-## Development Tools
+- **Password hashing** - Werkzeug's `generate_password_hash()` with salt
+- **SQL injection prevention** - Parameterized queries throughout
+- **Session security** - Signed cookies with `SECRET_KEY`
+- **Secrets management** - `.env` file (excluded from git)
 
-**Ruff** (linter & formatter, included in `requirements.txt`):
+### Security Checklist
+
+- [ ] Never commit `.env` file (already in `.gitignore`)
+- [ ] Generate strong `SECRET_KEY` for production: `openssl rand -hex 32`
+- [ ] Use production WSGI server (Waitress/Gunicorn), not Flask dev server
+- [ ] Enable HTTPS in production
+- [ ] Keep dependencies updated: `pip list --outdated`
+- [ ] Review database connection strings (no passwords in code)
+
+### Production Deployment
+
+**Do not use Flask's development server in production:**
 ```bash
-ruff check .        # Lint
-ruff check . --fix  # Auto-fix
-ruff format .       # Format
+# Bad (dev only)
+python app.py
+
+# Good (production)
+python wsgi.py
 ```
 
-Configuration in `pyproject.toml`:
-- Line length: 88
-- Target: Python 3.12
-- Rules: E (pycodestyle), F (pyflakes), I (isort), B (bugbear), UP (pyupgrade), C4 (comprehensions)
+The development server is not designed for production workloads. Use Waitress (included) or Gunicorn.
 
+---
 
-## Adding Routes
+## Next Steps
 
-1. Define function in `routes.py`:
-```python
-@main.route("/your-path")
-def your_view():
-    return render_template("your_template.html")
-```
+**For learners:**
+- Read `TUTOR.md` for detailed Flask concepts
+- Experiment with adding new routes
+- Try adding your own templates
+- Explore the database schema in `init-db.sql`
 
-2. Protect with authentication:
-```python
-@main.route("/protected")
-@login_required
-def protected_view():
-    # g.user is guaranteed to exist here
-    return render_template("protected.html")
-```
+**For production:**
+- Add CSRF protection (Flask-WTF)
+- Implement input validation
+- Add connection pooling (psycopg_pool)
+- Set up proper logging (file handlers)
+- Create comprehensive tests
+- Add rate limiting (Flask-Limiter)
 
-## Code Overview
+---
 
-**app.py** - Application factory and dev server
-- Creates Flask app instance
-- Configures simple structured logging
-- Registers blueprint, error handlers, and database teardown
-
-**config.py** - Environment configuration
-- `SECRET_KEY` - Session signing (random fallback for dev)
-- `DATABASE_URL` - PostgreSQL connection string
-
-**db.py** - Database helpers
-- `get_db()` - Request-scoped connection with dict_row factory
-- `close_db()` - Closes connection on request teardown
-
-**auth.py** - Authentication
-- `login_user(user_id)` - Store user in session
-- `logout_user()` - Clear session
-- `login_required` - Decorator for protected routes
-
-**routes.py** - Blueprint with all routes
-- `/` - Home page with posts
-- `/register`, `/login`, `/logout` - Auth flows
-- `/profile` - User profile (requires login)
-- `/posts`, `/posts/create`, `/posts/<post_id>` - Post management
-- `/health` - Health check endpoint
-
-**errors.py** - Error handlers
-- 404 and 500 pages with logging
-
+**Questions?** Check out the [Flask documentation](https://flask.palletsprojects.com/) or review the code comments for detailed explanations.
