@@ -123,13 +123,13 @@ tests/
 ```python
 # tests/test_auth.py
 import pytest
-from auth import hash_password, verify_password
+from werkzeug.security import generate_password_hash, check_password_hash
 
 def test_password_hashing():
     password = "secure123"
-    hashed = hash_password(password)
-    assert verify_password(hashed, password)
-    assert not verify_password(hashed, "wrong")
+    hashed = generate_password_hash(password)
+    assert check_password_hash(hashed, password)
+    assert not check_password_hash(hashed, "wrong")
 
 def test_login_required_redirects(client):
     response = client.get("/profile")
@@ -328,21 +328,20 @@ CMD ["python", "wsgi.py"]
 2. **Add input validation** - Email, username, password constraints
 3. **Implement connection pooling** - Use psycopg_pool
 4. **Add database error handling** - Try/except for all DB operations
-5. **Fix `id` parameter shadowing** - Rename to `post_id` in routes.py:220
 
 ### Medium Priority (Quality & Maintainability)
-6. **Add type hints** - Throughout the codebase
-7. **Create test suite** - Pytest with conftest.py fixtures
-8. **Add transaction context manager** - Simplify commit/rollback
-9. **Enhance /health endpoint** - Check DB connectivity
-10. **Add .env.example** - Document required environment variables
+5. **Add type hints** - Throughout the codebase
+6. **Create test suite** - Pytest with conftest.py fixtures
+7. **Add transaction context manager** - Simplify commit/rollback
+8. **Enhance /health endpoint** - Check DB connectivity
+9. **Add .env.example** - Document required environment variables
 
 ### Low Priority (Nice to Have)
-11. Add pagination to `/posts` route
-12. Add rate limiting (Flask-Limiter)
-13. Create Dockerfile for containerization
-14. Add data validation library (Pydantic or marshmallow)
-15. Add pre-commit hooks for Ruff
+10. Add pagination to `/posts` route
+11. Add rate limiting (Flask-Limiter)
+12. Create Dockerfile for containerization
+13. Add data validation library (Pydantic or marshmallow)
+14. Add pre-commit hooks for Ruff
 
 ---
 
@@ -359,27 +358,19 @@ The recent refactoring to a flat structure improves simplicity without sacrifici
 ## Quick Wins (< 30 minutes each)
 
 ```python
-# 1. Fix id shadowing (routes.py:220)
-@main.route("/posts/<int:post_id>")
-def post_detail(post_id):
-    # ... use post_id instead of id
-
-# 2. Add .env.example
+# 1. Add .env.example
 cat > .env.example << EOF
 DATABASE_URL=postgresql://user:pass@localhost:5432/dbname
 SECRET_KEY=your-secret-key-here
 FLASK_DEBUG=1
-SESSION_COOKIE_SECURE=false
 EOF
 
-# 3. Add type hints to auth.py
-from typing import Optional
-
+# 2. Add type hints to auth.py
 def login_user(user_id: int) -> None: ...
 def logout_user() -> None: ...
-def verify_password(stored_password: str, provided_password: str) -> bool: ...
+def login_required(view): ...
 
-# 4. Enhance health check
+# 3. Enhance health check
 @main.route("/health")
 def health_check():
     try:

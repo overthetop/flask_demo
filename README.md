@@ -112,7 +112,7 @@ Open http://localhost:8000
 **Key Files:**
 - **app.py** - Creates Flask app, registers blueprints
 - **routes.py** - All application routes and views
-- **auth.py** - `login_required` decorator, password helpers
+- **auth.py** - `login_required` decorator, session helpers
 - **db.py** - Request-scoped database connections
 - **config.py** - Environment variables and settings
 
@@ -233,7 +233,7 @@ def protected_view():
 | `/` | GET | Home page with posts | No |
 | `/register` | GET/POST | User registration | No |
 | `/login` | GET/POST | User login | No |
-| `/logout` | POST | User logout | Yes |
+| `/logout` | GET | User logout | No |
 | `/profile` | GET | User profile page | Yes |
 | `/posts` | GET | List all posts | No |
 | `/posts/create` | GET/POST | Create new post | Yes |
@@ -249,7 +249,7 @@ curl http://localhost:5000/health
 Response:
 ```json
 {
-  "status": "ok"
+  "status": "healthy"
 }
 ```
 
@@ -313,8 +313,8 @@ sequenceDiagram
   F->>R: handle /login
   R->>D: SELECT user WHERE username
   D-->>R: user row
-  R->>A: verify_password(hash, password)
-  A-->>R: result (true/false)
+  R->>R: check_password_hash(hash, password)
+  Note over R: Using werkzeug security
   alt valid credentials
     R->>F: login_user -> session['user_id']
     F->>T: render flash + redirect
