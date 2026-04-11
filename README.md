@@ -28,7 +28,7 @@ This application demonstrates:
 - **Werkzeug** - Password hashing and security
 - **Ruff** - Fast Python linter and formatter
 
-**Patterns**: Application factory, blueprints, session-based authentication, request context
+**Patterns**: Flat app structure, session-based authentication, request context
 
 ---
 
@@ -94,13 +94,11 @@ Open http://localhost:8000
 ## Project Structure
 
 ```
-├── app.py              # App factory + dev entrypoint
+├── app.py              # Flask app + all routes + dev entrypoint
 ├── wsgi.py             # Production entrypoint (Waitress)
 ├── config.py           # Environment-driven configuration
 ├── db.py               # Database connection helpers
 ├── auth.py             # Authentication helpers
-├── routes.py           # All routes and views (blueprint)
-├── errors.py           # Error handlers (404, 500)
 ├── templates/          # Jinja2 HTML templates
 ├── static/             # CSS, images, JavaScript
 ├── init-db.sql         # PostgreSQL schema
@@ -110,8 +108,7 @@ Open http://localhost:8000
 ```
 
 **Key Files:**
-- **app.py** - Creates Flask app, registers blueprints
-- **routes.py** - All application routes and views
+- **app.py** - Flask app, all routes, error handlers, and dev entrypoint
 - **auth.py** - `login_required` decorator, session helpers
 - **db.py** - Request-scoped database connections
 - **config.py** - Environment variables and settings
@@ -123,6 +120,7 @@ Open http://localhost:8000
 - User registration and authentication
 - Session management with secure cookies
 - Post creation and viewing
+- About Us page with contact form
 - Protected routes with `@login_required`
 - PostgreSQL integration with parameterized queries
 - Health check endpoint for monitoring
@@ -206,16 +204,16 @@ docker compose exec -T db psql -U postgres -d flask_showcase < init-db.sql
 
 ### Adding New Routes
 
-**Basic route** in `routes.py`:
+**Basic route** in `app.py`:
 ```python
-@main.route("/your-path")
+@app.route("/your-path")
 def your_view():
     return render_template("your_template.html")
 ```
 
 **Protected route** (requires authentication):
 ```python
-@main.route("/protected")
+@app.route("/protected")
 @login_required
 def protected_view():
     # g.user is guaranteed to exist here
@@ -238,6 +236,7 @@ def protected_view():
 | `/posts` | GET | List all posts | No |
 | `/posts/create` | GET/POST | Create new post | Yes |
 | `/posts/<post_id>` | GET | View single post | No |
+| `/about-us` | GET/POST | About Us + contact form | No |
 | `/health` | GET | Health check endpoint | No |
 
 ### Health Check
@@ -265,11 +264,9 @@ flowchart TD
   A[Client/Browser]
   J[Dev Server app.py]
   K[Waitress wsgi.py]
-  B[Flask App]
-  C[routes.py main blueprint]
+  B["app.py (Flask App + Routes)"]
   D[auth.py helpers]
   E["db.py (psycopg)"]
-  F[errors.py handlers]
   G[templates/ Jinja2]
   H[static/ files]
   I[(PostgreSQL)]
@@ -281,10 +278,8 @@ flowchart TD
   K --> B
 
   subgraph Flask Application
-    B --> C
-    C --> D
-    C --> E
-    C --> F
+    B --> D
+    B --> E
     B --> G
     B --> H
   end
@@ -297,30 +292,26 @@ flowchart TD
 ```mermaid
 sequenceDiagram
   participant B as Browser
-  participant F as Flask App
-  participant R as Routes (Blueprint)
+  participant F as Flask App (app.py)
   participant A as Auth Helpers
   participant D as DB (psycopg)
   participant T as Templates
 
   B->>F: POST /login (username, password)
   activate F
-  F->>R: before_app_request
-  R->>D: Load g.user from session
-  D-->>R: user row or None
-  R-->>F: g.user set
+  F->>D: load_logged_in_user (before_request)
+  D-->>F: g.user set
 
-  F->>R: handle /login
-  R->>D: SELECT user WHERE username
-  D-->>R: user row
-  R->>R: check_password_hash(hash, password)
-  Note over R: Using werkzeug security
+  F->>D: SELECT user WHERE username
+  D-->>F: user row
+  F->>F: check_password_hash(hash, password)
+  Note over F: Using werkzeug security
   alt valid credentials
-    R->>F: login_user -> session['user_id']
+    F->>A: login_user -> session['user_id']
     F->>T: render flash + redirect
     T-->>B: 302 -> /
   else invalid
-    R-->>B: 200 form with error message
+    F-->>B: 200 form with error message
   end
   deactivate F
 ```
@@ -330,8 +321,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
   participant B as Browser
-  participant F as Flask App
-  participant R as Routes (Blueprint)
+  participant F as Flask App (app.py)
   participant A as Auth Helpers
   participant D as DB (psycopg)
   participant T as Templates
@@ -339,13 +329,11 @@ sequenceDiagram
   Note over B,F: Access form
   B->>F: GET /posts/create
   activate F
-  F->>R: before_app_request
-  R->>D: Load g.user from session
-  D-->>R: user row or None
-  R-->>F: g.user set
-  R->>A: login_required check
+  F->>D: load_logged_in_user (before_request)
+  D-->>F: g.user set
+  F->>A: login_required check
   alt not authenticated
-    R-->>B: 302 redirect to /login
+    F-->>B: 302 redirect to /login
   else authenticated
     F->>T: render create form
     T-->>B: 200 form
@@ -355,13 +343,13 @@ sequenceDiagram
   Note over B,F: Submit new post
   B->>F: POST /posts/create (title, content)
   activate F
-  F->>R: validate title
+  F->>F: validate title
   alt valid
-    R->>D: INSERT INTO posts (title, content, user_id)
-    D-->>R: commit ok
-    R-->>B: 302 redirect to /posts (flash message)
+    F->>D: INSERT INTO posts (title, content, user_id)
+    D-->>F: commit ok
+    F-->>B: 302 redirect to /posts (flash message)
   else invalid
-    R->>T: re-render form with error
+    F->>T: re-render form with error
     T-->>B: 200 form with error
   end
   deactivate F
@@ -374,7 +362,7 @@ sequenceDiagram
 ### Request Context (flask.g)
 
 Per-request storage that's cleared after each request:
-- **`g.user`** - Current user loaded by `@main.before_app_request`
+- **`g.user`** - Current user loaded by `@app.before_request`
 - **`g.db`** - Database connection managed by `get_db()`
 
 ### Session Management

@@ -31,19 +31,17 @@ Clean, educational Flask app demonstrating core web patterns. Simplified from pa
 ### Current Structure (Flattened)
 ```
 flask_demo/
-├── app.py          # Application factory + dev server
+├── app.py          # Flask app + all routes + dev server
 ├── wsgi.py         # Production server (Waitress)
 ├── config.py       # Environment configuration
 ├── db.py           # Database connection management
 ├── auth.py         # Authentication helpers
-├── routes.py       # Main blueprint with all routes
-├── errors.py       # Error handlers (404, 500)
 ├── templates/      # Jinja2 templates
 ├── static/         # CSS, images, JS
 └── init-db.sql     # PostgreSQL schema
 ```
 
-**Design Pattern:** Application Factory + Blueprint
+**Design Pattern:** Flat app (no Blueprint, no factory)
 **Database:** PostgreSQL via psycopg 3
 **WSGI Server:** Waitress (production), Flask dev server (development)
 
@@ -62,7 +60,7 @@ flask_demo/
 ### Simplified Code
 - **auth.py**: 59 → 29 lines (51% reduction)
 - **db.py**: 43 → 27 lines (37% reduction)
-- **routes.py**: 250 → 195 lines (22% reduction)
+- **app.py**: consolidated routes + error handlers (no blueprint overhead)
 
 Removed unnecessary wrappers, verbose logging, and nested conditionals.
 
@@ -308,11 +306,11 @@ CMD ["python", "wsgi.py"]
 
 ### Changes Applied:
 1. ✅ Flattened structure (removed `app/` package)
-2. ✅ Moved `create_app()` into `app.py`
+2. ✅ Removed Blueprint and application factory — routes live directly in `app.py`
 3. ✅ Updated all imports (`from app.X` → `from X`)
 4. ✅ Formatted code with Ruff
-5. ✅ Updated all documentation (README, TUTOR)
-6. ✅ Removed excessive blank lines (routes.py:245-250 → 243-244)
+5. ✅ Updated all documentation (README, TUTOR, CLAUDE)
+6. ✅ Added `/about-us` route with contact form and `contact_messages` table
 
 ### Impact:
 - **Pros:** Simpler structure, easier navigation, fewer files

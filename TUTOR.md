@@ -25,13 +25,11 @@ Flask is a lightweight web framework for Python. It's called a microframework be
 ## Project Structure
 
 ```
-├── app.py          # App factory + dev server
+├── app.py          # Flask app + all routes + dev server
 ├── wsgi.py         # Production server (Waitress)
 ├── config.py       # Configuration settings
 ├── db.py           # Database connection
 ├── auth.py         # Authentication helpers
-├── routes.py       # All routes (blueprint)
-├── errors.py       # Error handlers (404, 500)
 ├── templates/      # HTML templates
 ├── static/         # CSS, images, JS
 └── init-db.sql     # Database schema
@@ -39,51 +37,28 @@ Flask is a lightweight web framework for Python. It's called a microframework be
 
 ## Key Flask Concepts
 
-### 1. Application Factory Pattern
+### 1. Flat App Structure
 
-Instead of creating a Flask app globally, we use a factory function:
+This project creates the Flask app directly at module level — no factory function needed:
 
 ```python
 # app.py
-def create_app():
-    app = Flask(__name__)
-    app.config.from_object(Config)
+app = Flask(__name__)
+app.config.from_object(Config)
 
-    app.register_blueprint(main)
-    register_error_handlers(app)
-    init_app(app)
-
-    return app
-```
-
-**Benefits:**
-- Makes testing easier
-- Allows multiple app instances
-- Better organization
-
-### 2. Blueprints
-
-Blueprints organize routes into modules. This project uses one blueprint (`main`) in `routes.py`:
-
-```python
-# routes.py
-from flask import Blueprint
-
-main = Blueprint("main", __name__)
-
-@main.route("/")
+@app.route("/")
 def index():
     return render_template("index.html", posts=posts)
 ```
 
-Registered in `app.py` via `app.register_blueprint(main)`.
+All routes, error handlers, and setup live in `app.py`. This is the simplest approach and works well for small-to-medium applications.
 
-### 3. Request Hooks
+### 2. Request Hooks
 
 Run code before every request:
 
 ```python
-@main.before_app_request
+@app.before_request
 def load_logged_in_user():
     user_id = session.get("user_id")
     if user_id is None:
@@ -191,7 +166,7 @@ def login_required(view):
     def wrapper(*args, **kwargs):
         if g.user is None:
             flash("You need to be logged in.")
-            return redirect(url_for("main.login"))
+            return redirect(url_for("login"))
         return view(*args, **kwargs)
     return wrapper
 ```
@@ -199,7 +174,7 @@ def login_required(view):
 Usage:
 
 ```python
-@main.route("/profile")
+@app.route("/profile")
 @login_required
 def profile():
     return render_template("auth/profile.html")
@@ -282,7 +257,7 @@ Open http://localhost:8000
 
 Try these to learn more:
 
-1. **Add a route** - Create a new page in `routes.py` using `@main.route`
+1. **Add a route** - Create a new page in `app.py` using `@app.route`
 2. **Modify a template** - Change `templates/index.html`
 3. **Add form validation** - Check input length before saving to database
 4. **Add a new field** - Add a "bio" field to user profiles
@@ -293,7 +268,7 @@ Try these to learn more:
 ### Handling Forms
 
 ```python
-@main.route('/register', methods=['GET', 'POST'])
+@app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method != 'POST':
         return render_template('auth/register.html')
@@ -323,11 +298,9 @@ Main files and their key functions:
 
 | File | Key Functions |
 |------|---------------|
-| `app.py` | `create_app()`, `setup_logging()` |
-| `routes.py` | `index()`, `register()`, `login()`, `logout()`, `profile()`, `posts()`, `create_post()`, `post_detail()` |
-| `db.py` | `get_db()`, `close_db()`, `init_app()` |
+| `app.py` | `setup_logging()`, `load_logged_in_user()`, `index()`, `register()`, `login()`, `logout()`, `profile()`, `posts()`, `create_post()`, `post_detail()`, `about_us()`, `health_check()` |
+| `db.py` | `get_db()`, `close_db()` |
 | `auth.py` | `login_user()`, `logout_user()`, `login_required()` |
-| `errors.py` | `register_error_handlers()` |
 | `config.py` | `Config` class |
 
 ## Linting
