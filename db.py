@@ -20,8 +20,3 @@ def close_db(e=None):
     db = g.pop("db", None)
     if db is not None:
         db.close()
-
-
-def init_app(app):
-    """Register database teardown handler."""
-    app.teardown_appcontext(close_db)

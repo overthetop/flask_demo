@@ -8,5 +8,5 @@
 <p>Email: {{ g.user.email }}</p>
 <p>Member since: {{ g.user.created_at.strftime('%Y-%m-%d') }}</p>
 
-<a href="{{ url_for('main.index') }}" class="btn">Back to Home</a>
+<a href="{{ url_for('index') }}" class="btn">Back to Home</a>
 {% endblock %}

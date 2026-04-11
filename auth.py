@@ -23,7 +23,7 @@ def login_required(view):
     def wrapper(*args, **kwargs):
         if g.user is None:
             flash("You need to be logged in to view this page.")
-            return redirect(url_for("main.login"))
+            return redirect(url_for("login"))
         return view(*args, **kwargs)
 
     return wrapper

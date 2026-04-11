@@ -10,22 +10,22 @@
     <header>
       <nav>
         <div>
-          <a href="{{ url_for('main.index') }}">Flask Showcase</a>
+          <a href="{{ url_for('index') }}">Flask Showcase</a>
         </div>
         <ul>
-          <li><a href="{{ url_for('main.index') }}">Home</a></li>
-          <li><a href="{{ url_for('main.posts') }}">Posts</a></li>
+          <li><a href="{{ url_for('index') }}">Home</a></li>
+          <li><a href="{{ url_for('posts') }}">Posts</a></li>
           {% if g.user %}
-          <li><a href="{{ url_for('main.create_post') }}">Create Post</a></li>
+          <li><a href="{{ url_for('create_post') }}">Create Post</a></li>
           {% endif %}
         </ul>
         <ul>
           {% if g.user %}
-          <li><a href="{{ url_for('main.profile') }}">Profile</a></li>
-          <li><a href="{{ url_for('main.logout') }}">Logout</a></li>
+          <li><a href="{{ url_for('profile') }}">Profile</a></li>
+          <li><a href="{{ url_for('logout') }}">Logout</a></li>
           {% else %}
-          <li><a href="{{ url_for('main.login') }}">Login</a></li>
-          <li><a href="{{ url_for('main.register') }}">Register</a></li>
+          <li><a href="{{ url_for('login') }}">Login</a></li>
+          <li><a href="{{ url_for('register') }}">Register</a></li>
           {% endif %}
         </ul>
       </nav>
