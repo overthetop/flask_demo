@@ -18,6 +18,14 @@ CREATE TABLE IF NOT EXISTS posts (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Create contact_messages table
+CREATE TABLE IF NOT EXISTS contact_messages (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(120) NOT NULL,
+    message TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Insert some sample data (optional)
 -- INSERT INTO users (username, email, password_hash) VALUES 
 --     ('admin', 'admin@example.com', 'hashed_password_here'),

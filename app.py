@@ -228,6 +228,42 @@ def health_check():
     return {"status": "healthy"}, 200
 
 
+@app.route("/about-us", methods=["GET", "POST"])
+def about_us():
+    """Render the About Us page with contact form."""
+    message_sent = False
+
+    if request.method == "POST":
+        email = request.form.get("email", "").strip()
+        message = request.form.get("message", "").strip()
+
+        errors = []
+        if not email:
+            errors.append("Email is required.")
+        elif "@" not in email or "." not in email:
+            errors.append("Please enter a valid email address.")
+
+        if not message:
+            errors.append("Message is required.")
+        elif len(message) > 1000:
+            errors.append("Message must be less than 1000 characters.")
+
+        if errors:
+            for error in errors:
+                flash(error)
+        else:
+            db = get_db()
+            with db.cursor() as cursor:
+                cursor.execute(
+                    "INSERT INTO contact_messages (email, message) VALUES (%s, %s)",
+                    (email, message),
+                )
+                db.commit()
+            message_sent = True
+
+    return render_template("about_us/index.html", message_sent=message_sent)
+
+
 if __name__ == "__main__":
     debug_env = os.environ.get("FLASK_DEBUG") or os.environ.get("DEBUG")
     debug = str(debug_env).lower() in ("1", "true", "yes")

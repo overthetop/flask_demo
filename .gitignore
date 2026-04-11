@@ -27,3 +27,5 @@ instance/
 
 # Logs
 *.log
+
+postgres_data/
